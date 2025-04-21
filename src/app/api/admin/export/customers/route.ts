@@ -63,6 +63,12 @@ const escapeCsvField = (field: any): string => {
 
 // --- API Handler for Export ---
 export async function GET(request: Request) {
+  // Early check for the encryption secret
+    if (!process.env.ID_CARD_ENCRYPTION_SECRET) {
+        console.error('Missing ID_CARD_ENCRYPTION_SECRET environment variable.');
+        return NextResponse.json({ message: '服务器配置错误：缺少 ID_CARD_ENCRYPTION_SECRET 环境变量' }, { status: 500 });
+    }
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -141,7 +147,7 @@ export async function GET(request: Request) {
         headers: responseHeaders,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('导出客户数据 API (Admin) 出错:', error);
     // Handle specific errors like missing encryption key
     if (error instanceof Error && error.message.includes('ID_CARD_ENCRYPTION_SECRET')) {

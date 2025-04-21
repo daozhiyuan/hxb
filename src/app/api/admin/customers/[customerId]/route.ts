@@ -44,6 +44,11 @@ const decryptIdCard = (encryptedIdCardHex: string): string | null => {
 
 // GET handler to fetch a single customer's details for ADMIN
 export async function GET(request: Request, { params }: { params: { customerId: string } }) {
+   // Early check for the encryption secret
+    if (!process.env.ID_CARD_ENCRYPTION_SECRET) {
+        console.error('Missing ID_CARD_ENCRYPTION_SECRET environment variable.');
+        return NextResponse.json({ message: '服务器配置错误：缺少 ID_CARD_ENCRYPTION_SECRET 环境变量' }, { status: 500 });
+    }
   try {
     const session = await getServerSession(authOptions);
     const customerId = parseInt(params.customerId, 10);
