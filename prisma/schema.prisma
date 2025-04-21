@@ -1,0 +1,51 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL") // Fetches the URL from the .env file
+}
+
+// User model for partners and administrators
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String
+  email         String    @unique
+  passwordHash  String    @map("password_hash") // Specify column name explicitly for clarity
+  role          Role      @default(PARTNER)
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(0) // Specify precision if needed
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamp(0)
+  customers     Customer[] // Relation to customers registered by this user
+
+  @@map("users") // Maps to the 'users' table in the database
+}
+
+// Customer model for registered clients
+model Customer {
+  id                     Int      @id @default(autoincrement())
+  name                   String
+  idCardNumberEncrypted  String   @map("id_card_number_encrypted") @db.Text // Use Text for potentially long encrypted string
+  idCardHash             String   @unique @map("id_card_hash") @db.VarChar(64) // SHA-256 hash is 64 hex chars
+  phone                  String?  // Optional phone number
+  address                String?  @db.Text // Use Text for potentially long address
+  status                 String   @default("submitted") // e.g., submitted, processing, approved, rejected
+  notes                  String?  @db.Text // Optional notes
+  registeredByPartnerId  Int      @map("registered_by_partner_id")
+  registeredBy           User     @relation(fields: [registeredByPartnerId], references: [id]) // Relation to the partner who registered the customer
+  registrationDate       DateTime @default(now()) @map("registration_date") @db.Timestamp(0)
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamp(0)
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamp(0)
+
+  @@map("customers") // Maps to the 'customers' table in the database
+}
+
+// Enum for User roles
+enum Role {
+  PARTNER
+  ADMIN
+}

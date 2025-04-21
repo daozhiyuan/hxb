@@ -28,7 +28,7 @@ import {
   ListChecks,
   AlertTriangle,
   Contact2,
-  Case,
+  Briefcase, // Changed from Case
   FileText,
 } from 'lucide-react';
 
@@ -63,7 +63,7 @@ const Icons = {
   listChecks: ListChecks,
   alertTriangle: AlertTriangle,
   contact: Contact2,
-  case: Case,
+  case: Briefcase, // Changed from Case
   fileText: FileText,
 };
 
