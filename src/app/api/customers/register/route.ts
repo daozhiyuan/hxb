@@ -17,6 +17,7 @@ const registerCustomerSchema = z.object({
   address: z.string().optional().nullable(),
   status: z.nativeEnum(CustomerStatus).default(CustomerStatus.FOLLOWING).optional(),
   notes: z.string().optional().nullable(),
+  jobTitle: z.string().optional().nullable(), // Added jobTitle
 });
 
 // AES-256-GCM Encryption settings
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: '请求数据无效', errors: validation.error.format() }, { status: 400 });
     }
 
-    const { name, companyName, lastYearRevenue, idCardNumber, phone, address, status, notes } = validation.data;
+    const { name, companyName, lastYearRevenue, idCardNumber, phone, address, status, notes, jobTitle } = validation.data;
 
     // 3. Hash ID Card for duplication check
     const idCardHash = hashIdCard(idCardNumber);
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
         status: status,
         notes: notes,
         registeredByPartnerId: parseInt(session.user.id, 10), // Get partner ID from session
+        jobTitle: jobTitle, // Added jobTitle
         // registrationDate, createdAt, updatedAt will be handled by default values
       },
     });

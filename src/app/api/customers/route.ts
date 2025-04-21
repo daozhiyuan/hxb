@@ -1,3 +1,4 @@
+
 'use server'; // Indicate this can run on the server
 
 import { NextResponse } from 'next/server';
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
         registrationDate: true,
         // createdAt: true, // Optional
         updatedAt: true,
+        jobTitle: true, // Added jobTitle
       },
       orderBy: {
         registrationDate: 'desc', // Show newest first

@@ -36,6 +36,7 @@ const formSchema = z.object({
   address: z.string().optional(),
   status: z.nativeEnum(CustomerStatus).default(CustomerStatus.FOLLOWING).optional(),
   notes: z.string().optional(),
+  jobTitle: z.string().optional().nullable(), // Added jobTitle
 });
 
 type CustomerFormValues = z.infer<typeof formSchema>;
@@ -55,6 +56,7 @@ export function CustomerRegistrationForm() {
       address: "",
       status: CustomerStatus.FOLLOWING,
       notes: "",
+      jobTitle: "", // Added jobTitle
     },
   });
 
@@ -152,6 +154,19 @@ export function CustomerRegistrationForm() {
                   </FormItem>
               )}
           />
+           <FormField
+              control={form.control}
+              name="jobTitle"
+              render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>职务</FormLabel>
+                      <FormControl>
+                          <Input placeholder="请输入客户职务 (可选)" {...field} disabled={isLoading} />
+                      </FormControl>
+                      <FormMessage />
+                  </FormItem>
+              )}
+          />
         <FormField
           control={form.control}
           name="idCardNumber"
@@ -172,7 +187,7 @@ export function CustomerRegistrationForm() {
             <FormItem>
               <FormLabel>联系电话</FormLabel>
               <FormControl>
-                <Input placeholder="请输入客户联系电话 (可选)" {...field} disabled={isLoading} value={field.value ?? ''} />
+                <Input placeholder="请输入客户联系电话 (可选)" {...field} value={field.value ?? ''} disabled={isLoading}/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -185,7 +200,7 @@ export function CustomerRegistrationForm() {
             <FormItem>
               <FormLabel>联系地址</FormLabel>
               <FormControl>
-                <Input placeholder="请输入客户联系地址 (可选)" {...field} disabled={isLoading} value={field.value ?? ''} />
+                <Input placeholder="请输入客户联系地址 (可选)" {...field} value={field.value ?? ''} disabled={isLoading}/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -225,7 +240,7 @@ export function CustomerRegistrationForm() {
             <FormItem>
               <FormLabel>备注</FormLabel>
               <FormControl>
-                <Textarea placeholder="请输入备注信息 (可选)" {...field} disabled={isLoading} value={field.value ?? ''} />
+                <Textarea placeholder="请输入备注信息 (可选)" {...field} value={field.value ?? ''} disabled={isLoading}/>
               </FormControl>
               <FormMessage />
             </FormItem>

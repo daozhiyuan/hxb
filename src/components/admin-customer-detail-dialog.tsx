@@ -37,6 +37,7 @@ interface CustomerDetail {
         name: string | null;
         email: string;
     };
+    jobTitle: string | null;
 }
 
 interface AdminCustomerDetailDialogProps {
@@ -120,6 +121,9 @@ export function AdminCustomerDetailDialog({ customerId, isOpen, onOpenChange }: 
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-center gap-2">
                     <span className="font-medium text-muted-foreground">去年营收:</span> <span>{customerDetail.lastYearRevenue || '-'}</span>
+                </div>
+                <div className="grid grid-cols-[100px_1fr] items-center gap-2">
+                    <span className="font-medium text-muted-foreground">职务:</span> <span>{customerDetail.jobTitle || '-'}</span>
                 </div>
                  <div className="grid grid-cols-[100px_1fr] items-center gap-2 bg-yellow-50 p-2 rounded border border-yellow-200">
                     <span className="font-medium text-muted-foreground flex items-center"><ShieldAlert className="h-4 w-4 mr-1 text-yellow-600"/>身份证号:</span> 

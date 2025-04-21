@@ -28,6 +28,7 @@ interface Customer {
   notes: string | null;
   registrationDate: string; // ISO string initially
   updatedAt: string; // ISO string initially
+  jobTitle: string | null; // Added jobTitle
 }
 
 export function CustomerList() {
@@ -72,6 +73,7 @@ export function CustomerList() {
         <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
         <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
         <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
+        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
       </TableRow>
     ))
   );
@@ -85,8 +87,9 @@ export function CustomerList() {
         <TableHeader>
           <TableRow>
             <TableHead>姓名</TableHead>
-              <TableHead>单位名称</TableHead>
-              <TableHead>去年营收</TableHead>
+            <TableHead>单位名称</TableHead>
+            <TableHead>去年营收</TableHead>
+            <TableHead>职务</TableHead>
             <TableHead>联系电话</TableHead>
             <TableHead>地址</TableHead>
             <TableHead>状态</TableHead>
@@ -102,8 +105,9 @@ export function CustomerList() {
             customers.map((customer) => (
               <TableRow key={customer.id}>
                 <TableCell className="font-medium">{customer.name}</TableCell>
-                  <TableCell>{customer.companyName || '-'}</TableCell>
-                  <TableCell>{customer.lastYearRevenue || '-'}</TableCell>
+                <TableCell>{customer.companyName || '-'}</TableCell>
+                <TableCell>{customer.lastYearRevenue || '-'}</TableCell>
+                <TableCell>{customer.jobTitle || '-'}</TableCell>
                 <TableCell>{customer.phone || '-'}</TableCell>
                 <TableCell>{customer.address || '-'}</TableCell>
                 <TableCell>

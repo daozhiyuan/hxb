@@ -33,7 +33,7 @@ import { AdminCustomerDetailDialog } from './admin-customer-detail-dialog'; // I
 import { ChevronLeft, ChevronRight, Search, CheckCircle, XCircle, CircleDot, Eye } from 'lucide-react'; // Import Eye icon
 
 // Interfaces remain the same
-interface AdminCustomer { id: number; name: string; companyName: string | null; lastYearRevenue: number | null; phone: string | null; address: string | null; status: string; notes: string | null; registrationDate: string; updatedAt: string; registeredBy: { id: number; name: string | null; email: string; }; }
+interface AdminCustomer { id: number; name: string; companyName: string | null; lastYearRevenue: number | null; phone: string | null; address: string | null; status: string; notes: string | null; registrationDate: string; updatedAt: string; registeredBy: { id: number; name: string | null; email: string; }; jobTitle: string | null; }
 interface PaginationInfo { page: number; pageSize: number; totalCount: number; totalPages: number; }
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -175,6 +175,7 @@ export function AdminCustomerList() {
         <TableCell><Skeleton className="h-4 w-[180px]" /></TableCell> 
         <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
         <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
+        <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
       </TableRow>
     ))
   );
@@ -215,6 +216,7 @@ export function AdminCustomerList() {
                 <TableHead>姓名</TableHead>
                 <TableHead>单位名称</TableHead>
                 <TableHead>去年营收</TableHead>
+                 <TableHead>职务</TableHead>
                 <TableHead>联系电话</TableHead>
                 <TableHead>地址</TableHead>
                 <TableHead>状态</TableHead>
@@ -232,6 +234,7 @@ export function AdminCustomerList() {
                     <TableCell className="font-medium">{customer.name}</TableCell>
                     <TableCell>{customer.companyName || '-'}</TableCell>
                     <TableCell>{customer.lastYearRevenue || '-'}</TableCell>
+                    <TableCell>{customer.jobTitle || '-'}</TableCell>
                     <TableCell>{customer.phone || '-'}</TableCell>
                     <TableCell>{customer.address || '-'}</TableCell>
                     <TableCell>
