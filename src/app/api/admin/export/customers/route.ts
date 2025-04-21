@@ -1,3 +1,4 @@
+
 'use server';
 
 import { NextResponse } from 'next/server';
@@ -54,8 +55,7 @@ const escapeCsvField = (field: any): string => {
     const stringField = String(field);
     // If the field contains a comma, double quote, or newline, enclose it in double quotes
     // Also, escape existing double quotes by doubling them
-    if (stringField.includes(',') || stringField.includes('"') || stringField.includes('
-')) {
+    if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
         return `"${stringField.replace(/"/g, '""')}"`;
     }
     return stringField;
@@ -89,7 +89,9 @@ export async function GET(request: Request) {
     // 3. Prepare CSV Data
     const headers = [
       'ID', 
-      '客户姓名', 
+      '客户姓名',
+      '单位名称',
+      '去年营收',
       '身份证号(解密后)', 
       '联系电话', 
       '联系地址', 
@@ -106,6 +108,8 @@ export async function GET(request: Request) {
         return [
             customer.id,
             customer.name,
+            customer.companyName || 'N/A',
+            customer.lastYearRevenue || 'N/A',
             decryptedIdCard || '[解密失败]', // Show decrypted ID or error placeholder
             customer.phone,
             customer.address,
@@ -122,8 +126,7 @@ export async function GET(request: Request) {
     const csvContent = [
         headers.join(','),
         ...rows.map(row => row.join(','))
-    ].join('
-');
+    ].join('\n');
 
     // 4. Set Response Headers for CSV Download
     const responseHeaders = new Headers();

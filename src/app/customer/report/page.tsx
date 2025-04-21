@@ -1,3 +1,4 @@
+
 "use client";
 
 import {useState} from 'react';
@@ -8,15 +9,20 @@ import {Textarea} from '@/components/ui/textarea';
 import {useToast} from '@/hooks/use-toast';
 import {CheckCustomerDuplicationInput, checkCustomerDuplication} from '@/ai/flows/check-customer-duplication';
 import {Icons} from '@/components/icons';
+import {Label} from "@/components/ui/label";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 
 export default function CustomerReportPage() {
   const [idNumber, setIdNumber] = useState('');
   const [name, setName] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [lastYearRevenue, setLastYearRevenue] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [isDuplicate, setIsDuplicate] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const {toast} = useToast();
+    const [customerStatus, setCustomerStatus] = useState('FOLLOWING'); // Default status
 
   const handleCheckDuplication = async () => {
     setLoading(true);
@@ -72,9 +78,12 @@ export default function CustomerReportPage() {
     // Clear the form
     setIdNumber('');
     setName('');
+    setCompanyName('');
+    setLastYearRevenue('');
     setPhone('');
     setAddress('');
     setIsDuplicate(null);
+      setCustomerStatus('FOLLOWING');
   };
 
   return (
@@ -87,7 +96,7 @@ export default function CustomerReportPage() {
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="idNumber">身份证号码</label>
+              <Label htmlFor="idNumber">身份证号码</Label>
               <Input
                 type="text"
                 id="idNumber"
@@ -98,7 +107,7 @@ export default function CustomerReportPage() {
               />
             </div>
             <div>
-              <label htmlFor="name">姓名</label>
+              <Label htmlFor="name">姓名</Label>
               <Input
                 type="text"
                 id="name"
@@ -109,7 +118,27 @@ export default function CustomerReportPage() {
               />
             </div>
             <div>
-              <label htmlFor="phone">电话号码</label>
+              <Label htmlFor="companyName">单位名称</Label>
+              <Input
+                type="text"
+                id="companyName"
+                placeholder="请输入单位名称"
+                value={companyName}
+                onChange={e => setCompanyName(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastYearRevenue">去年营收</Label>
+              <Input
+                type="number"
+                id="lastYearRevenue"
+                placeholder="请输入去年营收"
+                value={lastYearRevenue}
+                onChange={e => setLastYearRevenue(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">电话号码</Label>
               <Input
                 type="tel"
                 id="phone"
@@ -120,7 +149,7 @@ export default function CustomerReportPage() {
               />
             </div>
             <div>
-              <label htmlFor="address">联系地址</label>
+              <Label htmlFor="address">联系地址</Label>
               <Textarea
                 id="address"
                 placeholder="请输入联系地址"
@@ -129,6 +158,24 @@ export default function CustomerReportPage() {
                 required
               />
             </div>
+
+              <div>
+                  <Label>客户状态</Label>
+                  <Select onValueChange={setCustomerStatus} defaultValue={customerStatus}>
+                      <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="选择状态" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="FOLLOWING">跟进中</SelectItem>
+                          <SelectItem value="NEGOTIATING">洽谈中</SelectItem>
+                          <SelectItem value="PENDING">待定</SelectItem>
+                          <SelectItem value="SIGNED">已签约</SelectItem>
+                          <SelectItem value="COMPLETED">已完成</SelectItem>
+                          <SelectItem value="LOST">已流失</SelectItem>
+                          <SelectItem value="OTHER">其他</SelectItem>
+                      </SelectContent>
+                  </Select>
+              </div>
 
             <Button type="button" variant="secondary" onClick={handleCheckDuplication} disabled={loading}>
               {loading ? (

@@ -1,3 +1,4 @@
+
 'use server';
 
 import { NextResponse } from 'next/server';
@@ -37,6 +38,12 @@ export async function GET(request: Request) {
                 mode: 'insensitive' // Case-insensitive search (adjust if DB doesn't support)
             } 
         },
+          {
+              companyName: {
+                  contains: searchQuery,
+                  mode: 'insensitive'
+              }
+          },
         { 
             registeredBy: {
                 OR: [
@@ -59,6 +66,8 @@ export async function GET(request: Request) {
             select: {
                 id: true,
                 name: true,
+                companyName: true,
+                lastYearRevenue: true,
                 phone: true,
                 address: true,
                 status: true,

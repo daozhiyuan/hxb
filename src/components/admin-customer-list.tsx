@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -32,7 +33,7 @@ import { AdminCustomerDetailDialog } from './admin-customer-detail-dialog'; // I
 import { ChevronLeft, ChevronRight, Search, CheckCircle, XCircle, CircleDot, Eye } from 'lucide-react'; // Import Eye icon
 
 // Interfaces remain the same
-interface AdminCustomer { id: number; name: string; phone: string | null; address: string | null; status: string; notes: string | null; registrationDate: string; updatedAt: string; registeredBy: { id: number; name: string | null; email: string; }; }
+interface AdminCustomer { id: number; name: string; companyName: string | null; lastYearRevenue: number | null; phone: string | null; address: string | null; status: string; notes: string | null; registrationDate: string; updatedAt: string; registeredBy: { id: number; name: string | null; email: string; }; }
 interface PaginationInfo { page: number; pageSize: number; totalCount: number; totalPages: number; }
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -103,7 +104,6 @@ export function AdminCustomerList() {
     fetchAdminCustomers(currentPage, searchQuery);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage]); 
-
 
   const handleStatusUpdate = async (customerId: number, currentStatus: string, newStatus: CustomerStatus) => {
       setIsUpdatingStatus(customerId); 
@@ -213,6 +213,8 @@ export function AdminCustomerList() {
              <TableHeader>
               <TableRow>
                 <TableHead>姓名</TableHead>
+                <TableHead>单位名称</TableHead>
+                <TableHead>去年营收</TableHead>
                 <TableHead>联系电话</TableHead>
                 <TableHead>地址</TableHead>
                 <TableHead>状态</TableHead>
@@ -228,6 +230,8 @@ export function AdminCustomerList() {
                 customers.map((customer) => (
                   <TableRow key={customer.id} className={isUpdatingStatus === customer.id ? 'opacity-50' : ''}> 
                     <TableCell className="font-medium">{customer.name}</TableCell>
+                    <TableCell>{customer.companyName || '-'}</TableCell>
+                    <TableCell>{customer.lastYearRevenue || '-'}</TableCell>
                     <TableCell>{customer.phone || '-'}</TableCell>
                     <TableCell>{customer.address || '-'}</TableCell>
                     <TableCell>

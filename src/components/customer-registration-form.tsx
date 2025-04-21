@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,13 +18,23 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from 'react';
+import {CustomerStatus} from "@prisma/client";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 
 // Re-define the schema for client-side validation (can be shared from a common file later)
 const formSchema = z.object({
   name: z.string().min(1, { message: "客户姓名不能为空" }).trim(),
+  companyName: z.string().optional().nullable(),
+  lastYearRevenue: z.string()
+      .refine(value => !isNaN(Number(value)), {
+          message: "去年营收必须是数字",
+      })
+      .optional()
+      .nullable(),
   idCardNumber: z.string().regex(/^\d{17}(\d|X)$/i, { message: "请输入有效的18位身份证号码" }).trim(),
   phone: z.string().optional(),
   address: z.string().optional(),
+  status: z.nativeEnum(CustomerStatus).default(CustomerStatus.FOLLOWING).optional(),
   notes: z.string().optional(),
 });
 
@@ -37,9 +48,12 @@ export function CustomerRegistrationForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      companyName: "",
+      lastYearRevenue: "",
       idCardNumber: "",
       phone: "",
       address: "",
+      status: CustomerStatus.FOLLOWING,
       notes: "",
     },
   });
@@ -112,6 +126,32 @@ export function CustomerRegistrationForm() {
             </FormItem>
           )}
         />
+          <FormField
+              control={form.control}
+              name="companyName"
+              render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>单位名称</FormLabel>
+                      <FormControl>
+                          <Input placeholder="请输入单位名称 (可选)" {...field} disabled={isLoading} />
+                      </FormControl>
+                      <FormMessage />
+                  </FormItem>
+              )}
+          />
+          <FormField
+              control={form.control}
+              name="lastYearRevenue"
+              render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>去年营收</FormLabel>
+                      <FormControl>
+                          <Input placeholder="请输入去年营收 (可选)" {...field} disabled={isLoading} />
+                      </FormControl>
+                      <FormMessage />
+                  </FormItem>
+              )}
+          />
         <FormField
           control={form.control}
           name="idCardNumber"
@@ -151,6 +191,33 @@ export function CustomerRegistrationForm() {
             </FormItem>
           )}
         />
+
+          <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>客户状态</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                              <SelectTrigger>
+                                  <SelectValue placeholder="选择客户状态" />
+                              </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                              <SelectItem value="FOLLOWING">跟进中</SelectItem>
+                              <SelectItem value="NEGOTIATING">洽谈中</SelectItem>
+                              <SelectItem value="PENDING">待定</SelectItem>
+                              <SelectItem value="SIGNED">已签约</SelectItem>
+                              <SelectItem value="COMPLETED">已完成</SelectItem>
+                              <SelectItem value="LOST">已流失</SelectItem>
+                              <SelectItem value="OTHER">其他</SelectItem>
+                          </SelectContent>
+                      </Select>
+                      <FormMessage />
+                  </FormItem>
+              )}
+          />
         <FormField
           control={form.control}
           name="notes"

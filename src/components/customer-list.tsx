@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -19,9 +20,11 @@ import { Skeleton } from "@/components/ui/skeleton"; // For loading state
 interface Customer {
   id: number;
   name: string;
+  companyName: string | null;
+  lastYearRevenue: number | null;
   phone: string | null;
   address: string | null;
-  status: string;
+  status: string; // Use the string type
   notes: string | null;
   registrationDate: string; // ISO string initially
   updatedAt: string; // ISO string initially
@@ -82,6 +85,8 @@ export function CustomerList() {
         <TableHeader>
           <TableRow>
             <TableHead>姓名</TableHead>
+              <TableHead>单位名称</TableHead>
+              <TableHead>去年营收</TableHead>
             <TableHead>联系电话</TableHead>
             <TableHead>地址</TableHead>
             <TableHead>状态</TableHead>
@@ -97,6 +102,8 @@ export function CustomerList() {
             customers.map((customer) => (
               <TableRow key={customer.id}>
                 <TableCell className="font-medium">{customer.name}</TableCell>
+                  <TableCell>{customer.companyName || '-'}</TableCell>
+                  <TableCell>{customer.lastYearRevenue || '-'}</TableCell>
                 <TableCell>{customer.phone || '-'}</TableCell>
                 <TableCell>{customer.address || '-'}</TableCell>
                 <TableCell>

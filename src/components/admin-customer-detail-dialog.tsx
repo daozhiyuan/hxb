@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -20,6 +21,8 @@ import { format } from 'date-fns';
 interface CustomerDetail {
     id: number;
     name: string;
+    companyName: string | null;
+    lastYearRevenue: number | null;
     decryptedIdCardNumber: string; // Includes decrypted value or error
     phone: string | null;
     address: string | null;
@@ -111,6 +114,12 @@ export function AdminCustomerDetailDialog({ customerId, isOpen, onOpenChange }: 
             <div className="space-y-2 text-sm">
                 <div className="grid grid-cols-[100px_1fr] items-center gap-2">
                     <span className="font-medium text-muted-foreground">姓名:</span> <span>{customerDetail.name}</span>
+                </div>
+                <div className="grid grid-cols-[100px_1fr] items-center gap-2">
+                    <span className="font-medium text-muted-foreground">单位名称:</span> <span>{customerDetail.companyName || '-'}</span>
+                </div>
+                <div className="grid grid-cols-[100px_1fr] items-center gap-2">
+                    <span className="font-medium text-muted-foreground">去年营收:</span> <span>{customerDetail.lastYearRevenue || '-'}</span>
                 </div>
                  <div className="grid grid-cols-[100px_1fr] items-center gap-2 bg-yellow-50 p-2 rounded border border-yellow-200">
                     <span className="font-medium text-muted-foreground flex items-center"><ShieldAlert className="h-4 w-4 mr-1 text-yellow-600"/>身份证号:</span> 
