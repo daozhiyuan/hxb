@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,31 +8,18 @@ datasource db {
   relationMode = "prisma"
 }
 
-enum Role {
-  ADMIN
-  PARTNER
-}
-
 model User {
   id           Int       @id @default(autoincrement())
-  email        String    @unique
   name         String?
+  email        String    @unique
   passwordHash String
   role         Role      @default(PARTNER)
   isActive     Boolean   @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  customers    Customer[] @relation("RegisteredBy")
-}
+  customers    Customer[]
 
-enum CustomerStatus {
-  FOLLOWING
-  NEGOTIATING
-  PENDING
-  SIGNED
-  COMPLETED
-  LOST
-  OTHER
+  @@index([email])
 }
 
 model Customer {
@@ -52,6 +36,24 @@ model Customer {
   registrationDate    DateTime       @default(now())
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
+  registeredBy        User           @relation(fields: [registeredByPartnerId], references: [id])
   registeredByPartnerId Int
-  registeredBy        User           @relation("RegisteredBy", fields: [registeredByPartnerId], references: [id])
+  jobTitle            String?        // Added jobTitle field
+
+  @@index([registeredByPartnerId])
+}
+
+enum Role {
+  ADMIN
+  PARTNER
+}
+
+enum CustomerStatus {
+  FOLLOWING
+  NEGOTIATING
+  PENDING
+  SIGNED
+  COMPLETED
+  LOST
+  OTHER
 }

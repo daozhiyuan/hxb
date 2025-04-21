@@ -1,4 +1,3 @@
-
 'use server';
 
 import { NextResponse } from 'next/server';
@@ -81,6 +80,7 @@ export async function GET(request: Request) {
                         email: true,
                     }
                 },
+                jobTitle: true,
             },
             orderBy: {
                 registrationDate: 'desc',
