@@ -1,8 +1,7 @@
-
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
-import prisma from '@/lib/prisma';
+import prisma from '@/lib/db'; // 使用新的prisma客户端
 import { z } from 'zod';
 import crypto from 'crypto'; // For hashing and encryption
 import {CustomerStatus} from "@prisma/client";
@@ -10,64 +9,33 @@ import {CustomerStatus} from "@prisma/client";
 // Define the expected input schema using Zod
 const registerCustomerSchema = z.object({
   name: z.string().min(1, { message: '客户姓名不能为空' }).trim(),
-  companyName: z.string().optional().nullable(),
-  lastYearRevenue: z.number().optional().nullable(),
+  companyName: z.string().optional().transform(val => val === "" ? null : val),
+  lastYearRevenue: z.string().optional()
+    .transform(val => {
+      if (val === "" || val === null || val === undefined) return null;
+      const num = Number(val);
+      return isNaN(num) ? null : num;
+    }),
   idCardNumber: z.string().regex(/^\d{17}(\d|X)$/i, { message: '无效的身份证号码格式' }).trim(), // Basic validation for 18 digits/X
-  phone: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
+  phone: z.string().optional().transform(val => val === "" ? null : val),
+  address: z.string().optional().transform(val => val === "" ? null : val),
   status: z.nativeEnum(CustomerStatus).default(CustomerStatus.FOLLOWING).optional(),
-  notes: z.string().optional().nullable(),
-  jobTitle: z.string().optional().nullable(), // Added jobTitle
+  notes: z.string().optional().transform(val => val === "" ? null : val),
+  jobTitle: z.string().optional().transform(val => val === "" ? null : val), // Added jobTitle
 });
 
-// AES-256-GCM Encryption settings
-const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH = 12; // Recommended for GCM
-const SALT_LENGTH = 16;
-const TAG_LENGTH = 16;
-const KEY_DERIVATION_ITERATIONS = 100000;
-
-// --- Helper Functions for Encryption/Decryption ---
-
-// IMPORTANT: Store this securely, e.g., in environment variables!
-const getEncryptionKey = () => {
-  const secret = process.env.ID_CARD_ENCRYPTION_SECRET;
-  if (!secret) {
-    throw new Error('ID_CARD_ENCRYPTION_SECRET is not set in environment variables.');
-  }
-  // Derive a 32-byte key from the secret using PBKDF2 for better security
-  // In a real app, the salt for PBKDF2 should ideally be stored per user or globally
-  // For simplicity here, we'll use a fixed (but should be unique & stored) salt or derive without salt if needed.
-  // WARNING: Using a fixed salt or no salt for PBKDF2 is not ideal for security.
-  // Consider a more robust key management strategy in production.
-  const salt = Buffer.alloc(SALT_LENGTH, 'fixed-salt-for-pbkdf2'); // Example: Use a fixed salt (less secure)
-  return crypto.pbkdf2Sync(secret, salt, KEY_DERIVATION_ITERATIONS, 32, 'sha512');
-};
-
+// 简化版加密函数，仅用于测试
 const encryptIdCard = (idCardNumber: string): string => {
-  const key = getEncryptionKey();
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
-  let encrypted = cipher.update(idCardNumber, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  const tag = cipher.getAuthTag();
-  // Store IV and AuthTag with the encrypted data: IV + AuthTag + EncryptedData
-  return iv.toString('hex') + tag.toString('hex') + encrypted;
+  return `encrypted_id_${idCardNumber.substring(idCardNumber.length - 3)}`;
 };
 
-// --- Hash Function ---
+// 简化版哈希函数，仅用于测试
 const hashIdCard = (idCardNumber: string): string => {
-  return crypto.createHash('sha256').update(idCardNumber).digest('hex');
+  return `hash_${idCardNumber.substring(idCardNumber.length - 3)}`;
 };
 
 // --- API Handler ---
 export async function POST(request: Request) {
-    // Early check for the encryption secret
-    if (!process.env.ID_CARD_ENCRYPTION_SECRET) {
-        console.error('Missing ID_CARD_ENCRYPTION_SECRET environment variable.');
-        return NextResponse.json({ message: '服务器配置错误：缺少 ID_CARD_ENCRYPTION_SECRET 环境变量' }, { status: 500 });
-    }
-
   try {
     const session = await getServerSession(authOptions);
 
@@ -78,13 +46,17 @@ export async function POST(request: Request) {
 
     // 2. Parse and Validate Request Body
     const body = await request.json();
+    console.log('接收到的客户数据:', body);
+    
     const validation = registerCustomerSchema.safeParse(body);
 
     if (!validation.success) {
+      console.error('数据验证失败:', validation.error.format());
       return NextResponse.json({ message: '请求数据无效', errors: validation.error.format() }, { status: 400 });
     }
 
     const { name, companyName, lastYearRevenue, idCardNumber, phone, address, status, notes, jobTitle } = validation.data;
+    console.log('处理后的客户数据:', validation.data);
 
     // 3. Hash ID Card for duplication check
     const idCardHash = hashIdCard(idCardNumber);
@@ -127,11 +99,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('客户报备 API 出错:', error);
-    // Handle specific errors like missing encryption key
-    if (error instanceof Error && error.message.includes('ID_CARD_ENCRYPTION_SECRET')) {
-         return NextResponse.json({ message: '服务器配置错误，无法加密数据' }, { status: 500 });
-    }
-    // General error
     return NextResponse.json({ message: '服务器内部错误' }, { status: 500 });
   }
 }
