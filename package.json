@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack -p 6000",
+    "dev": "next dev --turbopack -p 3005",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p 3005",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:seed": "npx prisma db seed"
