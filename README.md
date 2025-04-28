@@ -46,7 +46,7 @@ If you prefer to set up manually:
 ```
 DATABASE_URL="mysql://root:password@localhost:3306/nextn"
 NEXTAUTH_SECRET="supersecretstring"
-NEXTAUTH_URL="http://localhost:6000"
+NEXTAUTH_URL="http://localhost:3005"
 ```
 
 2. Initialize the database:

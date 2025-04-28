@@ -24,27 +24,50 @@ const getEncryptionKey = () => {
 };
 
 // --- Helper Function for Decryption ---
-const decryptIdCard = (encryptedIdCard: string): string | null => {
+const decryptIdCard = (encryptedIdCard: string, userRole: string): string | null => {
   try {
     // 检查是否是简化格式的加密字符串
     if (encryptedIdCard.startsWith('encrypted_id_')) {
       // 从简化格式中提取身份证号码的最后三位
       const lastThreeDigits = encryptedIdCard.substring('encrypted_id_'.length);
       
-      // 对于超级管理员，我们模拟完整身份证号
-      // 实际应用中，这应该从安全存储中恢复或使用更安全的措施
-      const adminFullIdCard = `51010920000101${lastThreeDigits}`;
-      return adminFullIdCard;
+      // 对于超级管理员，返回完整身份证号（实际应用中应从安全存储恢复）
+      if (userRole === 'SUPERADMIN') {
+        return `HIDDEN-SUPERADMIN-ONLY-${lastThreeDigits}`;
+      }
+      
+      // 对于普通管理员，返回带掩码的身份证号
+      if (userRole === 'ADMIN') {
+        return `***************${lastThreeDigits}`;
+      }
+      
+      // 对于其他角色，最小化信息暴露
+      return `***************${lastThreeDigits}`;
     }
     
-    // 如果是旧的加密格式，尝试标准解密（这部分可能不会成功，但保留以兼容可能存在的数据）
-    try {
-      const key = process.env.ID_CARD_ENCRYPTION_SECRET || 'default-fallback-key';
-      // 简单编码，实际生产环境需要更安全的实现
-      return `完整身份证: ${encryptedIdCard.substring(0, 10)}...`;
-    } catch (decryptError) {
-      console.error('尝试标准解密失败:', decryptError);
-      return null;
+    // 处理标准加密格式数据
+    if (userRole === 'SUPERADMIN') {
+      try {
+        // 尝试真实解密 - 仅对SUPERADMIN
+        const data = Buffer.from(encryptedIdCard, 'base64');
+        const iv = data.subarray(0, IV_LENGTH);
+        const tag = data.subarray(data.length - TAG_LENGTH);
+        const ciphertext = data.subarray(IV_LENGTH, data.length - TAG_LENGTH);
+        
+        const key = getEncryptionKey();
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+        decipher.setAuthTag(tag);
+        
+        let decrypted = decipher.update(ciphertext);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString();
+      } catch (decryptError) {
+        console.error('解密失败:', decryptError);
+        return '[SUPERADMIN解密失败]';
+      }
+    } else {
+      // 非SUPERADMIN用户看到遮蔽的信息
+      return '****************';
     }
   } catch (error) {
     console.error('解密身份证号码失败:', error);
@@ -71,8 +94,8 @@ export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
-    // 1. 检查权限（仅限管理员）
-    if (!session || !session.user || session.user.role !== 'ADMIN') {
+    // 1. 检查权限（仅限管理员和超级管理员）
+    if (!session || !session.user || (session.user.role !== 'ADMIN' && session.user.role !== 'SUPERADMIN')) {
       return NextResponse.json({ message: '未授权操作' }, { status: 403 });
     }
 
@@ -110,7 +133,7 @@ export async function GET(request: Request) {
     ];
     
     const rows = customers.map(customer => {
-        const decryptedIdCard = decryptIdCard(customer.idCardNumberEncrypted);
+        const decryptedIdCard = decryptIdCard(customer.idCardNumberEncrypted, session.user.role);
         return [
             customer.id,
             customer.name,

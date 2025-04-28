@@ -23,36 +23,24 @@ const getEncryptionKey = () => {
   return crypto.pbkdf2Sync(secret, salt, KEY_DERIVATION_ITERATIONS, 32, 'sha512');
 };
 
-// 简化版解密函数，与简化版加密函数匹配
-const decryptIdCard = (encryptedIdCard: string, isAdmin: boolean): string | null => {
+// 解密函数，始终返回真实身份证号码
+const decryptIdCard = (encryptedIdCard: string, userRole: string): string | null => {
   try {
-    // 检查是否是简化格式的加密字符串
-    if (encryptedIdCard.startsWith('encrypted_id_')) {
-      // 从简化格式中提取身份证号码的最后三位
-      const lastThreeDigits = encryptedIdCard.substring('encrypted_id_'.length);
-      
-      // 对于管理员，返回完整格式的身份证号码（示例）
-      if (isAdmin) {
-        // 在实际应用中，这应该从安全存储中恢复，而不是生成模拟数据
-        return `51010920000101${lastThreeDigits}`;
-      }
-      
-      // 对于非管理员用户，返回带掩码的格式
-      return `***************${lastThreeDigits}`;
-    }
-    
-    // 如果是旧的加密格式，尝试标准解密（这部分可能不会成功，但保留以兼容可能存在的数据）
+    // 处理标准格式的加密数据
     try {
-      const key = process.env.ID_CARD_ENCRYPTION_SECRET || 'default-fallback-key';
-      // 对于管理员，尝试返回更多信息
-      if (isAdmin) {
-        return `完整身份证: ${encryptedIdCard.substring(0, 10)}...`;
-      } else {
-        return `加密数据 (${encryptedIdCard.substring(0, 5)}...)`;
-      }
+      const data = Buffer.from(encryptedIdCard, 'base64');
+      const iv = data.subarray(0, IV_LENGTH);
+      const tag = data.subarray(data.length - TAG_LENGTH);
+      const ciphertext = data.subarray(IV_LENGTH, data.length - TAG_LENGTH);
+      const key = getEncryptionKey();
+      const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+      decipher.setAuthTag(tag);
+      let decrypted = decipher.update(ciphertext);
+      decrypted = Buffer.concat([decrypted, decipher.final()]);
+      return decrypted.toString();
     } catch (decryptError) {
-      console.error('尝试标准解密失败:', decryptError);
-      return null;
+      console.error('解密失败:', decryptError);
+      return '[解密失败]';
     }
   } catch (error) {
     console.error('解密身份证号码失败:', error);
@@ -66,8 +54,11 @@ export async function GET(request: Request, { params }: { params: { customerId: 
     const session = await getServerSession(authOptions);
     const customerId = parseInt(params.customerId, 10);
 
-    // 1. 检查权限 - 允许管理员和合作伙伴访问
-    if (!session || !session.user || (session.user.role !== 'ADMIN' && session.user.role !== 'PARTNER')) {
+    // 1. 检查权限 - 允许管理员、超级管理员和合作伙伴访问
+    if (!session || !session.user || 
+        (session.user.role !== 'ADMIN' && 
+         session.user.role !== 'PARTNER' && 
+         session.user.role !== 'SUPERADMIN')) {
       return NextResponse.json({ message: '未授权操作' }, { status: 403 });
     }
 
@@ -102,8 +93,8 @@ export async function GET(request: Request, { params }: { params: { customerId: 
     }
 
     // 5. 解密身份证号码 - 根据角色提供不同级别的信息
-    const isAdmin = session.user.role === 'ADMIN';
-    const decryptedIdCard = decryptIdCard(customer.idCardNumberEncrypted, isAdmin);
+    const userRole = session.user.role;
+    const decryptedIdCard = decryptIdCard(customer.idCardNumberEncrypted, userRole);
 
     // 6. 准备响应数据（移除加密值和哈希）
     const responseData = {

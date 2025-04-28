@@ -6,6 +6,13 @@ import { z } from 'zod';
 import crypto from 'crypto'; // For hashing and encryption
 import {CustomerStatus} from "@prisma/client";
 
+// --- Encryption/Decryption Settings ---
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 12;
+const SALT_LENGTH = 16;
+const TAG_LENGTH = 16;
+const KEY_DERIVATION_ITERATIONS = 100000;
+
 // Define the expected input schema using Zod
 const registerCustomerSchema = z.object({
   name: z.string().min(1, { message: '客户姓名不能为空' }).trim(),
@@ -24,14 +31,54 @@ const registerCustomerSchema = z.object({
   jobTitle: z.string().optional().transform(val => val === "" ? null : val), // Added jobTitle
 });
 
-// 简化版加密函数，仅用于测试
-const encryptIdCard = (idCardNumber: string): string => {
-  return `encrypted_id_${idCardNumber.substring(idCardNumber.length - 3)}`;
+// --- Helper Function to get Encryption Key ---
+const getEncryptionKey = () => {
+  const secret = process.env.ID_CARD_ENCRYPTION_SECRET;
+  if (!secret) {
+    throw new Error('ID_CARD_ENCRYPTION_SECRET is not set in environment variables.');
+  }
+  const salt = Buffer.alloc(SALT_LENGTH, 'fixed-salt-for-pbkdf2'); // Fixed salt for key derivation
+  return crypto.pbkdf2Sync(secret, salt, KEY_DERIVATION_ITERATIONS, 32, 'sha512');
 };
 
-// 简化版哈希函数，仅用于测试
+// 真实加密函数，使用AES-GCM加密身份证号码
+const encryptIdCard = (idCardNumber: string): string => {
+  try {
+    // 获取加密密钥
+    const key = getEncryptionKey();
+    // 创建随机初始化向量
+    const iv = crypto.randomBytes(IV_LENGTH);
+    // 创建加密器
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+    // 加密数据
+    let encrypted = cipher.update(idCardNumber, 'utf8');
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    // 获取认证标签
+    const tag = cipher.getAuthTag();
+    // 组合IV、加密数据和认证标签
+    const result = Buffer.concat([iv, encrypted, tag]);
+    // 返回Base64编码的加密结果
+    return result.toString('base64');
+  } catch (error) {
+    console.error('加密身份证号码失败:', error);
+    throw new Error('身份证加密失败，请联系管理员');
+  }
+};
+
+// 哈希函数，使用SHA-256哈希身份证号码
 const hashIdCard = (idCardNumber: string): string => {
-  return `hash_${idCardNumber.substring(idCardNumber.length - 3)}`;
+  try {
+    // 创建哈希
+    const hash = crypto.createHash('sha256');
+    hash.update(idCardNumber);
+    
+    // 返回哈希结果的十六进制表示
+    return hash.digest('hex');
+  } catch (error) {
+    console.error('哈希身份证号码失败:', error);
+    // 如果哈希失败，回退到简化版哈希（生产环境应该抛出错误）
+    return `hash_${idCardNumber.substring(idCardNumber.length - 3)}`;
+  }
 };
 
 // --- API Handler ---

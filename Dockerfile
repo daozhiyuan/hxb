@@ -45,7 +45,7 @@ RUN chmod +x docker-entrypoint.sh
 
 USER nextjs
 
-EXPOSE 6000
+EXPOSE 3005
 
 # Start the application with the entry point script
 ENTRYPOINT ["./docker-entrypoint.sh"] 

@@ -7,7 +7,7 @@ echo "Setting up environment variables..."
 cat > .env.local << EOL
 DATABASE_URL="mysql://root:password@localhost:3306/nextn"
 NEXTAUTH_SECRET="supersecretstring"
-NEXTAUTH_URL="http://localhost:6000"
+NEXTAUTH_URL="http://localhost:3005"
 EOL
 
 # Check if MySQL is installed
