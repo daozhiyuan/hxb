@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -32,7 +31,16 @@ import { AdminCustomerDetailDialog } from './admin-customer-detail-dialog'; // I
 
 import { ChevronLeft, ChevronRight, Search, CheckCircle, XCircle, CircleDot, Eye } from 'lucide-react'; // Import Eye icon
 
-// Interfaces remain the same
+interface Customer {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  status: CustomerStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface AdminCustomer { id: number; name: string; companyName: string | null; lastYearRevenue: number | null; phone: string | null; address: string | null; status: string; notes: string | null; registrationDate: string; updatedAt: string; registeredBy: { id: number; name: string | null; email: string; }; jobTitle: string | null; }
 interface PaginationInfo { page: number; pageSize: number; totalCount: number; totalPages: number; }
 
@@ -108,9 +116,12 @@ export function AdminCustomerList() {
   const handleStatusUpdate = async (customerId: number, currentStatus: string, newStatus: CustomerStatus) => {
       setIsUpdatingStatus(customerId); 
       const originalCustomers = [...customers]; 
+      
+      // 乐观更新UI
       setCustomers(prev => 
           prev.map(c => c.id === customerId ? { ...c, status: newStatus } : c)
       );
+      
       try {
           const response = await fetch(`/api/admin/customers/${customerId}/status`, {
               method: 'PATCH',
@@ -119,26 +130,24 @@ export function AdminCustomerList() {
               },
               body: JSON.stringify({ status: newStatus }),
           });
+
           if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.message || '更新状态失败');
+            throw new Error('更新状态失败');
           }
-          const updatedCustomer = await response.json();
-          setCustomers(prev => 
-              prev.map(c => c.id === customerId ? { ...c, status: updatedCustomer.status, updatedAt: updatedCustomer.updatedAt } : c)
-          );
+
           toast({
               title: "状态更新成功",
-              description: `客户 #${customerId} 状态已更新为 ${newStatus}.`,
+            description: `客户状态已更新为 ${newStatus}`,
           });
-      } catch (err: any) {
-          console.error("更新客户状态失败:", err);
+    } catch (error) {
+        console.error('更新状态失败:', error);
+        // 恢复原始状态
+        setCustomers(originalCustomers);
           toast({
               title: "更新失败",
-              description: err.message || '无法更新客户状态，请稍后重试。',
+            description: "无法更新客户状态，请稍后重试",
               variant: "destructive",
           });
-          setCustomers(originalCustomers);
       } finally {
           setIsUpdatingStatus(null); 
       }
@@ -187,6 +196,20 @@ export function AdminCustomerList() {
           case 'processing': return 'outline';
           case 'submitted': return 'secondary';
           default: return 'secondary';
+      }
+  };
+
+  const updateCustomerStatus = async (customerId: number, status: CustomerStatus) => {
+    const response = await fetch(`/api/customers/${customerId}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      throw new Error('更新状态失败');
       }
   };
 
@@ -251,59 +274,59 @@ export function AdminCustomerList() {
                             size="sm" 
                             className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50"
                             onClick={() => handleViewDetails(customer.id)}
-                            disabled={isUpdatingStatus !== null} // Disable while any status update is happening
+                            disabled={isUpdatingStatus !== null}
                         >
                            <Eye className="h-3 w-3 mr-1"/> 详情
                         </Button>
                         
                         {/* Status Update Buttons */}
                         {(customer.status === 'submitted' || customer.status === 'processing') && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs text-green-600 hover:bg-green-50 border-green-200 hover:text-green-700" disabled={isUpdatingStatus !== null}>
-                                        <CheckCircle className="h-3 w-3 mr-1"/> 批准
+                            <div className="inline-flex space-x-1">
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-7 px-2 text-xs text-green-600 hover:bg-green-50 border-green-300"
+                                    onClick={() => handleStatusUpdate(customer.id, customer.status, 'approved')}
+                                    disabled={isUpdatingStatus !== null}
+                                >
+                                    <CheckCircle className="h-3 w-3 mr-1"/> 通过
                                     </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader><AlertDialogTitle>确认批准</AlertDialogTitle></AlertDialogHeader>
-                                    <AlertDialogDescription>您确定要将客户 "{customer.name}" 的状态更新为 "approved" 吗？</AlertDialogDescription>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>取消</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleStatusUpdate(customer.id, customer.status, 'approved')} className="bg-green-600 hover:bg-green-700">确认批准</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
-                         {(customer.status === 'submitted' || customer.status === 'processing') && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                     <Button variant="outline" size="sm" className="h-7 px-2 text-xs text-red-600 hover:bg-red-50 border-red-200 hover:text-red-700" disabled={isUpdatingStatus !== null}>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-7 px-2 text-xs text-red-600 hover:bg-red-50 border-red-300"
+                                    onClick={() => handleStatusUpdate(customer.id, customer.status, 'rejected')}
+                                    disabled={isUpdatingStatus !== null}
+                                >
                                         <XCircle className="h-3 w-3 mr-1"/> 拒绝
                                     </Button>
-                                </AlertDialogTrigger>
-                                 <AlertDialogContent>
-                                    <AlertDialogHeader><AlertDialogTitle>确认拒绝</AlertDialogTitle></AlertDialogHeader>
-                                    <AlertDialogDescription>您确定要将客户 "{customer.name}" 的状态更新为 "rejected" 吗？</AlertDialogDescription>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>取消</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleStatusUpdate(customer.id, customer.status, 'rejected')} className="bg-red-600 hover:bg-red-700">确认拒绝</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                            </div>
                         )}
+                        
                          {(customer.status === 'approved' || customer.status === 'rejected') && (
                              <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-7 px-2 text-xs text-gray-600 hover:bg-gray-100 border-gray-300" disabled={isUpdatingStatus !== null}>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="h-7 px-2 text-xs text-gray-600 hover:bg-gray-100 border-gray-300" 
+                                        disabled={isUpdatingStatus !== null}
+                                    >
                                          <CircleDot className="h-3 w-3 mr-1"/> 标记处理中
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
-                                    <AlertDialogHeader><AlertDialogTitle>标记处理中</AlertDialogTitle></AlertDialogHeader>
-                                    <AlertDialogDescription>您确定要将客户 "{customer.name}" 的状态改回 "processing" 吗？</AlertDialogDescription>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>标记处理中</AlertDialogTitle>
+                                    </AlertDialogHeader>
+                                    <AlertDialogDescription>
+                                        您确定要将客户 "{customer.name}" 的状态改回 "processing" 吗？
+                                    </AlertDialogDescription>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>取消</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleStatusUpdate(customer.id, customer.status, 'processing')}>确认</AlertDialogAction>
+                                        <AlertDialogAction onClick={() => handleStatusUpdate(customer.id, customer.status, 'processing')}>
+                                            确认
+                                        </AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>

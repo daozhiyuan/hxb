@@ -69,11 +69,11 @@ export function AdminPartnerList({ refreshTrigger = 0 }: AdminPartnerListProps) 
   // Function to handle status change
   const handleStatusChange = async (partnerId: number, currentStatus: boolean) => {
     const newStatus = !currentStatus;
-    // Optimistically update the UI first
+    // 先乐观更新UI
     setPartners(prevPartners =>
-        prevPartners.map(p => p.id === partnerId ? { ...p, isActive: newStatus } : p)
+      prevPartners.map(p => p.id === partnerId ? { ...p, isActive: newStatus } : p)
     );
-
+  
     try {
       const response = await fetch(`/api/admin/partners/${partnerId}`, {
         method: 'PATCH',
@@ -82,17 +82,17 @@ export function AdminPartnerList({ refreshTrigger = 0 }: AdminPartnerListProps) 
         },
         body: JSON.stringify({ isActive: newStatus }),
       });
-
+  
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || '更新状态失败');
       }
+      
+      // 成功提示
       toast({
         title: "更新成功",
-        description: `合作伙伴状态已更新为 ${newStatus ? '启用' : '禁用'}.`,
+        description: `合作伙伴状态已${newStatus ? '启用' : '禁用'}。`,
       });
-      // Optionally re-fetch data to ensure consistency, though optimistic update handles it visually
-      // fetchPartners(); 
     } catch (err: any) {
       console.error("更新合作伙伴状态失败:", err);
       toast({
@@ -100,7 +100,7 @@ export function AdminPartnerList({ refreshTrigger = 0 }: AdminPartnerListProps) 
         description: err.message || '无法更新合作伙伴状态，请稍后重试。',
         variant: "destructive",
       });
-      // Revert optimistic update on error
+      // 发生错误时恢复原状态
       setPartners(prevPartners =>
         prevPartners.map(p => p.id === partnerId ? { ...p, isActive: currentStatus } : p)
       );

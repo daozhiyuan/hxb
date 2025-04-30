@@ -5,9 +5,10 @@ const prismaClientSingleton = () => {
   return new PrismaClient({
     datasources: {
       db: {
-        url: "mysql://nextn:nextn@localhost:3306/nextn"
+        url: process.env.DATABASE_URL || "mysql://root:password@localhost:3306/nextn?connection_limit=5&pool_timeout=0&authentication_plugin=mysql_native_password"
       }
-    }
+    },
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
 };
 

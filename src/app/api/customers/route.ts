@@ -1,4 +1,3 @@
-
 'use server'; // Indicate this can run on the server
 
 import { NextResponse } from 'next/server';
@@ -10,43 +9,43 @@ import prisma from '@/lib/prisma';
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-
-    // 1. Check Authentication and Authorization
-    if (!session || !session.user || session.user.role !== 'PARTNER') {
+    if (!session || !session.user) {
       return NextResponse.json({ message: '未授权操作' }, { status: 403 });
     }
+    const { role, id } = session.user;
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const pageSize = parseInt(searchParams.get('pageSize') || '10', 10);
+    const search = searchParams.get('search') || '';
 
-    const partnerId = parseInt(session.user.id, 10);
+    const where: any = {};
+    if (role === 'PARTNER') {
+      where.registeredByPartnerId = parseInt(id, 10);
+    }
+    if (search) {
+      where.OR = [
+        { name: { contains: search } },
+        { companyName: { contains: search } },
+        { phone: { contains: search } }
+      ];
+    }
 
-    // 2. Fetch customers registered by this partner
-    const customers = await prisma.customer.findMany({
-      where: {
-        registeredByPartnerId: partnerId,
-      },
-      select: { // Select only the necessary fields for the list
-        id: true,
-        name: true,
-        // idCardNumberEncrypted: false, // Do not send encrypted ID card in list view
-        // idCardHash: false,          // Do not send hash in list view
-        phone: true,
-        address: true,
-        status: true,
-        notes: true,
-        registrationDate: true,
-        // createdAt: true, // Optional
-        updatedAt: true,
-        jobTitle: true, // Added jobTitle
-      },
-      orderBy: {
-        registrationDate: 'desc', // Show newest first
-      },
+    const [customers, total] = await prisma.$transaction([
+      prisma.customer.findMany({
+        where,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { registrationDate: 'desc' }
+      }),
+      prisma.customer.count({ where })
+    ]);
+
+    return NextResponse.json({
+      data: customers,
+      pagination: { page, pageSize, total }
     });
-
-    // 3. Return Success Response
-    return NextResponse.json(customers, { status: 200 });
-
   } catch (error) {
-    console.error('获取客户列表 API 出错:', error);
+    console.error('客户列表接口出错:', error);
     return NextResponse.json({ message: '服务器内部错误' }, { status: 500 });
   }
 }

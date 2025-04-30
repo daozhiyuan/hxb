@@ -1,0 +1,155 @@
+
+> nextn@0.1.0 start
+> next start -p 3005
+
+   ▲ Next.js 15.3.1
+   - Local:        http://localhost:3005
+   - Network:      http://192.168.33.131:3005
+
+ ✓ Starting...
+ ⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+ ✓ Ready in 846ms
+Error during authorization: Error [PrismaClientInitializationError]: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Authentication failed against database server at `localhost`, the provided database credentials for `nextn` are not valid.
+
+Please make sure to provide valid database credentials for the database server at `localhost`.
+    at async Object.authorize (.next/server/app/api/admin/customers/[customerId]/route.js:1:1372)
+    at async Object.c (.next/server/chunks/112.js:34:55145)
+    at async _ (.next/server/chunks/112.js:25:56559)
+    at async a (.next/server/chunks/112.js:17:20239)
+    at async e.length.t (.next/server/chunks/112.js:17:21682) {
+  clientVersion: '6.6.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+Error during authorization: Error [PrismaClientInitializationError]: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Authentication failed against database server at `localhost`, the provided database credentials for `nextn` are not valid.
+
+Please make sure to provide valid database credentials for the database server at `localhost`.
+    at async Object.authorize (.next/server/app/api/admin/customers/[customerId]/route.js:1:1372)
+    at async Object.c (.next/server/chunks/112.js:34:55145)
+    at async _ (.next/server/chunks/112.js:25:56559)
+    at async a (.next/server/chunks/112.js:17:20239)
+    at async e.length.t (.next/server/chunks/112.js:17:21682) {
+  clientVersion: '6.6.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+Error during authorization: Error [PrismaClientInitializationError]: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Authentication failed against database server at `localhost`, the provided database credentials for `nextn` are not valid.
+
+Please make sure to provide valid database credentials for the database server at `localhost`.
+    at async Object.authorize (.next/server/app/api/admin/customers/[customerId]/route.js:1:1372)
+    at async Object.c (.next/server/chunks/112.js:34:55145)
+    at async _ (.next/server/chunks/112.js:25:56559)
+    at async a (.next/server/chunks/112.js:17:20239)
+    at async e.length.t (.next/server/chunks/112.js:17:21682) {
+  clientVersion: '6.6.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+Error during authorization: Error [PrismaClientInitializationError]: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Authentication failed against database server at `localhost`, the provided database credentials for `nextn` are not valid.
+
+Please make sure to provide valid database credentials for the database server at `localhost`.
+    at async Object.authorize (.next/server/app/api/admin/customers/[customerId]/route.js:1:1372)
+    at async Object.c (.next/server/chunks/112.js:34:55145)
+    at async _ (.next/server/chunks/112.js:25:56559)
+    at async a (.next/server/chunks/112.js:17:20239)
+    at async e.length.t (.next/server/chunks/112.js:17:21682) {
+  clientVersion: '6.6.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+Error during authorization: Error [PrismaClientInitializationError]: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Authentication failed against database server at `localhost`, the provided database credentials for `nextn` are not valid.
+
+Please make sure to provide valid database credentials for the database server at `localhost`.
+    at async Object.authorize (.next/server/app/api/admin/customers/[customerId]/route.js:1:1372)
+    at async Object.c (.next/server/chunks/112.js:34:55145)
+    at async _ (.next/server/chunks/112.js:25:56559)
+    at async a (.next/server/chunks/112.js:17:20239)
+    at async e.length.t (.next/server/chunks/112.js:17:21682) {
+  clientVersion: '6.6.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+Error during authorization: Error [PrismaClientInitializationError]: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Authentication failed against database server at `localhost`, the provided database credentials for `nextn` are not valid.
+
+Please make sure to provide valid database credentials for the database server at `localhost`.
+    at async Object.authorize (.next/server/app/api/admin/customers/[customerId]/route.js:1:1372)
+    at async Object.c (.next/server/chunks/112.js:34:55145)
+    at async _ (.next/server/chunks/112.js:25:56559)
+    at async a (.next/server/chunks/112.js:17:20239)
+    at async e.length.t (.next/server/chunks/112.js:17:21682) {
+  clientVersion: '6.6.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+Error during authorization: Error [PrismaClientInitializationError]: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Authentication failed against database server at `localhost`, the provided database credentials for `nextn` are not valid.
+
+Please make sure to provide valid database credentials for the database server at `localhost`.
+    at async Object.authorize (.next/server/app/api/admin/customers/[customerId]/route.js:1:1372)
+    at async Object.c (.next/server/chunks/112.js:34:55145)
+    at async _ (.next/server/chunks/112.js:25:56559)
+    at async a (.next/server/chunks/112.js:17:20239)
+    at async e.length.t (.next/server/chunks/112.js:17:21682) {
+  clientVersion: '6.6.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+Error during authorization: Error [PrismaClientInitializationError]: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Authentication failed against database server at `localhost`, the provided database credentials for `nextn` are not valid.
+
+Please make sure to provide valid database credentials for the database server at `localhost`.
+    at async Object.authorize (.next/server/app/api/admin/customers/[customerId]/route.js:1:1372)
+    at async Object.c (.next/server/chunks/112.js:34:55145)
+    at async _ (.next/server/chunks/112.js:25:56559)
+    at async a (.next/server/chunks/112.js:17:20239)
+    at async e.length.t (.next/server/chunks/112.js:17:21682) {
+  clientVersion: '6.6.0',
+  errorCode: undefined,
+  retryable: undefined
+}
+Error during authorization: Error [PrismaClientInitializationError]: 
+Invalid `prisma.user.findUnique()` invocation:
+
+
+Authentication failed against database server at `localhost`, the provided database credentials for `nextn` are not valid.
+
+Please make sure to provide valid database credentials for the database server at `localhost`.
+    at async Object.authorize (.next/server/app/api/admin/customers/[customerId]/route.js:1:1372)
+    at async Object.c (.next/server/chunks/112.js:34:55145)
+    at async _ (.next/server/chunks/112.js:25:56559)
+    at async a (.next/server/chunks/112.js:17:20239)
+    at async e.length.t (.next/server/chunks/112.js:17:21682) {
+  clientVersion: '6.6.0',
+  errorCode: undefined,
+  retryable: undefined
+}

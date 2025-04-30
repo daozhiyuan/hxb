@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, FormEvent } from 'react'; // Import FormEvent
@@ -7,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { CheckCustomerDuplicationInput, checkCustomerDuplication } from '@/ai/flows/check-customer-duplication';
 import { Icons } from '@/components/icons';
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,7 +39,6 @@ export default function CustomerReportPage() {
     setIsDuplicate(null); // Reset previous check
 
     try {
-      const input: CheckCustomerDuplicationInput = { idNumber: idNumber };
       // Assuming checkCustomerDuplication makes an API call to check duplication
       // If it doesn't, this logic needs adjustment.
       const result = await checkCustomerDuplication(input);
@@ -71,11 +68,22 @@ export default function CustomerReportPage() {
     }
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => { // Use FormEvent
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitting(true); // Start submission loading state
-
-    // Ensure duplication check has been performed and customer is not a duplicate
+    setSubmitting(true);
+  
+    // 验证必填字段
+    if (!name || !idNumber || !phone || !address) {
+      toast({
+        title: '表单不完整',
+        description: '请填写所有必填字段（姓名、身份证号码、电话号码和联系地址）。',
+        variant: 'destructive',
+      });
+      setSubmitting(false);
+      return;
+    }
+  
+    // 确保已进行查重检查且客户不是重复的
     if (isDuplicate === true) {
       toast({
         title: '无法提交',
@@ -85,7 +93,7 @@ export default function CustomerReportPage() {
       setSubmitting(false);
       return;
     }
-     if (isDuplicate === null) {
+    if (isDuplicate === null) {
       toast({
         title: '无法提交',
         description: '请先执行客户查重操作。',
@@ -94,7 +102,7 @@ export default function CustomerReportPage() {
       setSubmitting(false);
       return;
     }
-
+  
     const customerData = {
       name,
       idCardNumber: idNumber,

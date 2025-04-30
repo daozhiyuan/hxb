@@ -3,51 +3,80 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
   relationMode = "prisma"
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   name         String?
-  email        String    @unique
+  email        String     @unique
   passwordHash String
-  role         Role      @default(PARTNER)
-  isActive     Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role         Role       @default(USER)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   customers    Customer[]
+  followUps    FollowUp[]
+  submittedAppeals Appeal[] @relation("PartnerAppeals")
+  processedAppeals Appeal[] @relation("OperatorAppeals")
+  appealLogs   AppealLog[]
 
   @@index([email])
-  @@map("users") // Explicitly map to lowercase 'users' table
+  @@map("users")
 }
 
 model Customer {
-  id                  Int            @id @default(autoincrement())
-  name                String
-  companyName         String?
-  lastYearRevenue     Float?
-  idCardNumberEncrypted String
-  idCardHash          String         @unique
-  phone               String?
-  address             String?
-  status              CustomerStatus @default(FOLLOWING)
-  notes               String?
-  registrationDate    DateTime       @default(now())
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  registeredBy        User           @relation(fields: [registeredByPartnerId], references: [id])
+  id                    Int            @id @default(autoincrement())
+  name                  String
+  companyName           String?
+  phone                 String?
+  email                 String?
+  status                CustomerStatus
+  notes                 String?
+  registrationDate      DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  jobTitle              String?
   registeredByPartnerId Int
-  jobTitle            String?        // Added jobTitle field
+  address               String?
+  idCardHash            String?        @unique
+  idCardNumberEncrypted String?
+  lastYearRevenue       Float?
+  registeredBy          User           @relation(fields: [registeredByPartnerId], references: [id])
+  followUps             FollowUp[]
+  tags                  CustomerTag[]
 
   @@index([registeredByPartnerId])
-  @@map("customers") // Explicitly map to lowercase 'customers' table
+}
+
+model FollowUp {
+  id          Int      @id @default(autoincrement())
+  content     String
+  createdAt   DateTime @default(now())
+  customerId  Int
+  createdById Int
+  type        String   @default("MEETING")
+  customer    Customer @relation(fields: [customerId], references: [id])
+  createdBy   User     @relation(fields: [createdById], references: [id])
+
+  @@index([customerId])
+  @@index([createdById])
+}
+
+model CustomerTag {
+  id          Int      @id @default(autoincrement())
+  name        String
+  color       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  customers   Customer[]
 }
 
 enum Role {
   ADMIN
   PARTNER
+  USER
 }
 
 enum CustomerStatus {
@@ -57,5 +86,52 @@ enum CustomerStatus {
   SIGNED
   COMPLETED
   LOST
-  OTHER
+}
+
+enum AppealStatus {
+  PENDING    @map("pending")     // 待处理
+  PROCESSING @map("processing")  // 处理中
+  APPROVED   @map("approved")    // 已通过
+  REJECTED   @map("rejected")    // 已驳回
+}
+
+model Appeal {
+  id            Int          @id @default(autoincrement())
+  customerName  String       // 客户姓名
+  idNumber     String       // 身份证号码（加密存储）
+  idNumberHash String       @unique // 身份证号码哈希（用于查重）
+  reason       String       @db.Text // 申诉原因
+  evidence     Json?        // 证据文件路径数组，使用 JSON 类型存储
+  status       AppealStatus @default(PENDING)
+  remarks      String?      @db.Text // 处理备注
+  
+  // 关联字段
+  partnerId    Int         // 提交申诉的合作伙伴ID
+  partner      User        @relation("PartnerAppeals", fields: [partnerId], references: [id])
+  operatorId   Int?        // 处理人ID
+  operator     User?       @relation("OperatorAppeals", fields: [operatorId], references: [id])
+  
+  // 时间戳
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // 审计日志关联
+  logs         AppealLog[]
+
+  @@index([status])
+  @@index([partnerId])
+}
+
+model AppealLog {
+  id        Int      @id @default(autoincrement())
+  appealId  Int      // 关联的申诉ID
+  appeal    Appeal   @relation(fields: [appealId], references: [id])
+  action    String   // 操作类型
+  remarks   String?  @db.Text // 操作备注
+  operatorId Int     // 操作人ID
+  operator   User    @relation(fields: [operatorId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([appealId])
+  @@index([operatorId])
 }

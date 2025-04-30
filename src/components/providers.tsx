@@ -4,21 +4,23 @@ import * as React from 'react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import { type ThemeProviderProps } from 'next-themes/dist/types';
 import { SessionProvider } from 'next-auth/react';
-import { Toaster } from "@/components/ui/toaster" // Import Toaster
 
 export function Providers({ children, ...props }: ThemeProviderProps) {
   return (
     <SessionProvider>
       <NextThemesProvider
-        attribute="class" // Apply theme class to <html> tag
-        defaultTheme="system" // Default to system preference
-        enableSystem // Enable system preference detection
-        disableTransitionOnChange // Optional: disable theme change animations
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
         {...props}
       >
         {children}
-        <Toaster /> {/* Add Toaster here inside providers */}
       </NextThemesProvider>
     </SessionProvider>
   );
+}
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  return <SessionProvider>{children}</SessionProvider>;
 }

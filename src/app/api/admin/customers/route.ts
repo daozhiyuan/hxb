@@ -33,21 +33,19 @@ export async function GET(request: Request) {
       whereClause.OR = [
         { 
             name: { 
-                contains: searchQuery, 
-                mode: 'insensitive' // Case-insensitive search (adjust if DB doesn't support)
+                contains: searchQuery
             } 
         },
           {
               companyName: {
-                  contains: searchQuery,
-                  mode: 'insensitive'
+                  contains: searchQuery
               }
           },
         { 
             registeredBy: {
                 OR: [
-                    { name: { contains: searchQuery, mode: 'insensitive' } },
-                    { email: { contains: searchQuery, mode: 'insensitive' } },
+                    { name: { contains: searchQuery } },
+                    { email: { contains: searchQuery } },
                 ]
             }
         },
@@ -66,9 +64,7 @@ export async function GET(request: Request) {
                 id: true,
                 name: true,
                 companyName: true,
-                lastYearRevenue: true,
                 phone: true,
-                address: true,
                 status: true,
                 notes: true,
                 registrationDate: true,
