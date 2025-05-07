@@ -1,12 +1,13 @@
-'use server';
-
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { Role } from '@prisma/client'; // Import Role enum
+
+// 告诉 Next.js 这个路由是动态的
+export const dynamic = 'force-dynamic';
 
 // --- Zod Schema for Creating Partner ---
 const createPartnerSchema = z.object({

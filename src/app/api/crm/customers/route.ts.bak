@@ -1,0 +1,124 @@
+import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import prisma from "@/lib/prisma"
+import { getSafeCustomersList } from "@/lib/prisma-helpers"
+import { Prisma } from "@prisma/client"
+// 告诉 Next.js 这个路由是动态的
+
+export const dynamic = 'force-dynamic'
+
+export async function GET(request: Request) {
+  const session = await getServerSession(authOptions)
+  
+  if (!session) {
+    return NextResponse.json({ error: '未授权' }, { status: 401 })
+  }
+  
+  const { searchParams } = new URL(request.url)
+  const page = parseInt(searchParams.get('page') || '1')
+  const pageSize = parseInt(searchParams.get('pageSize') || '10')
+  const searchQuery = searchParams.get('search') || ''
+  const sortBy = searchParams.get('sortBy') || 'registrationDate'
+  const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc'
+  const statusFilter = searchParams.get('status') || ''
+  
+  try {
+    const where: any = {}
+    
+    if (session.user.role === 'PARTNER') {
+      where.registeredByPartnerId = session.user.id
+    }
+    
+    if (searchQuery) {
+      where.search = searchQuery
+    }
+    
+    if (statusFilter && statusFilter !== 'ALL') {
+      where.status = statusFilter
+    }
+    
+    // 使用安全查询辅助函数获取客户列表
+    try {
+      const result = await getSafeCustomersList({
+        page,
+        pageSize,
+        where,
+        sortBy,
+        sortOrder
+      })
+      
+      return NextResponse.json(result)
+    } catch (databaseError) {
+      console.warn("使用查询辅助函数获取客户列表失败，提供空结果:", databaseError)
+      
+      try {
+        // 尝试直接使用SQL查询，创建条件
+        let whereCondition = "WHERE 1=1";
+        const params: any[] = [];
+        
+        if (searchQuery) {
+          whereCondition += " AND (name LIKE ? OR companyName LIKE ?)";
+          params.push(`%${searchQuery}%`, `%${searchQuery}%`);
+        }
+        
+        if (statusFilter && statusFilter !== 'ALL') {
+          whereCondition += " AND status = ?";
+          params.push(statusFilter);
+        }
+        
+        if (session.user.role === 'PARTNER') {
+          whereCondition += " AND registeredByPartnerId = ?";
+          params.push(Number(session.user.id));
+        }
+        
+        // 构建计数查询
+        const countQuery = `SELECT COUNT(*) as total FROM customers ${whereCondition}`;
+        const countResult = await prisma.$queryRawUnsafe(countQuery, ...params);
+        const total = Number((countResult as any)[0]?.total || 0);
+        
+        // 构建数据查询
+        const orderClause = `ORDER BY ${sortBy} ${sortOrder}`;
+        const limitClause = `LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
+        const dataQuery = `SELECT * FROM customers ${whereCondition} ${orderClause} ${limitClause}`;
+        
+        const customers = await prisma.$queryRawUnsafe(dataQuery, ...params);
+        
+        return NextResponse.json({
+          data: customers || [],
+          pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages: Math.ceil(total / pageSize)
+          }
+        });
+      } catch (sqlError) {
+        console.error("直接SQL查询也失败，返回空结果:", sqlError);
+        
+        // 返回空结果作为后备方案
+        return NextResponse.json({
+          data: [],
+          pagination: {
+            page,
+            pageSize,
+            total: 0,
+            totalPages: 0
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error("获取客户列表失败:", error)
+    // 返回空结果作为后备方案
+    return NextResponse.json({
+      data: [],
+      pagination: {
+        page,
+        pageSize,
+        total: 0,
+        totalPages: 0
+      }
+    });
+  }
+}

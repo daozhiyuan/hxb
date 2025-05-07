@@ -5,7 +5,7 @@ const prismaClientSingleton = () => {
   return new PrismaClient({
     datasources: {
       db: {
-        url: process.env.DATABASE_URL || "mysql://root:password@localhost:3306/nextn?connection_limit=5&pool_timeout=0&authentication_plugin=mysql_native_password"
+        url: process.env.DATABASE_URL || "mysql://crmuser:crmpassword@localhost:3306/crm?connection_limit=5&pool_timeout=0&authentication_plugin=mysql_native_password"
       }
     },
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],

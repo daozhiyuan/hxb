@@ -33,9 +33,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CustomerStatus } from "@prisma/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
+import { CustomerStatusEnum, CustomerStatusText, CustomerStatus } from "@/config/client-config";
 
 // Define the expected shape of customer data from the API
 interface Customer {
@@ -56,11 +56,17 @@ type SortField = 'name' | 'companyName' | 'registrationDate' | 'status' | 'updat
 type SortOrder = 'asc' | 'desc';
 
 interface PaginatedResponse {
-  items: Customer[];
+  data: Customer[];
   total: number;
   page: number;
   pageSize: number;
   totalPages: number;
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  }
 }
 
 export function CustomerList() {
@@ -74,6 +80,8 @@ export function CustomerList() {
   const [selectedStatus, setSelectedStatus] = useState<CustomerStatus | "">("");
   const [sortField, setSortField] = useState<SortField>('registrationDate');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [autoSave, setAutoSave] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const pageSize = 10;
   const { toast } = useToast();
 
@@ -109,9 +117,34 @@ export function CustomerList() {
         }
         const data: PaginatedResponse = await response.json();
         console.log("获取到的客户数据:", data);
-        setCustomers(data.items);
-        setTotalPages(data.totalPages);
-        setTotalItems(data.total);
+        setCustomers(data.data || []);
+        setTotalPages(data.totalPages || data.pagination?.totalPages || 1);
+        setTotalItems(data.total || data.pagination?.total || 0);
+        
+        // 自动保存功能
+        if (autoSave && data.data && data.data.length > 0) {
+          setSaveStatus('saving');
+          try {
+            const saveResponse = await fetch('/api/crm/customers/auto-save', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ customers: data.data })
+            });
+            
+            if (!saveResponse.ok) {
+              throw new Error('自动保存失败');
+            }
+            
+            setSaveStatus('success');
+            setTimeout(() => setSaveStatus('idle'), 2000);
+          } catch (err) {
+            console.error('自动保存失败:', err);
+            setSaveStatus('error');
+            setTimeout(() => setSaveStatus('idle'), 2000);
+          }
+        }
       } catch (err: any) {
         console.error("获取客户列表失败:", err);
         setError(err.message || '无法加载客户数据');
@@ -144,15 +177,7 @@ export function CustomerList() {
   );
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case 'FOLLOWING': return '跟进中';
-      case 'NEGOTIATING': return '洽谈中';
-      case 'PENDING': return '待处理';
-      case 'SIGNED': return '已签约';
-      case 'COMPLETED': return '已完成';
-      case 'LOST': return '已流失';
-      default: return status;
-    }
+    return CustomerStatusText[status as keyof typeof CustomerStatusText] || status;
   };
 
   const handlePageChange = (page: number) => {
@@ -307,55 +332,28 @@ export function CustomerList() {
         </Table>
       </div>
       
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-4 flex justify-center">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious 
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                />
-              </PaginationItem>
-              
-              {[...Array(totalPages)].map((_, index) => {
-                const pageNumber = index + 1;
-                if (
-                  pageNumber === 1 ||
-                  pageNumber === totalPages ||
-                  (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
-                ) {
-                  return (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationLink
-                        onClick={() => handlePageChange(pageNumber)}
-                        isActive={currentPage === pageNumber}
-                      >
-                        {pageNumber}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                } else if (
-                  pageNumber === currentPage - 2 ||
-                  pageNumber === currentPage + 2
-                ) {
-                  return (
-                    <PaginationItem key={pageNumber}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  );
-                }
-                return null;
-              })}
-
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+          <div className="flex items-center justify-between">
+            <Button 
+              variant="outline" 
+              onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              上一页
+            </Button>
+            <div className="mx-4">
+              第 {currentPage} 页，共 {totalPages} 页
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              下一页
+            </Button>
+          </div>
         </div>
       )}
     </div>

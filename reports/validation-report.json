@@ -1,0 +1,149 @@
+{
+  "timestamp": "2025-05-06T14:41:58.736Z",
+  "summary": {
+    "totalRecords": 22,
+    "validRecords": 22,
+    "invalidRecords": 0,
+    "validPercentage": "100.00%"
+  },
+  "issues": {
+    "emptyIdCardCount": 0,
+    "decryptionFailureCount": 0,
+    "hashMismatchCount": 0,
+    "formatErrorCount": 0
+  },
+  "details": [
+    {
+      "id": 1,
+      "name": "测试客户1",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 2,
+      "name": "测试客户2",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 3,
+      "name": "测试客户3",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 4,
+      "name": "测试客户1",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 5,
+      "name": "测试客户2",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 6,
+      "name": "测试客户3",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 7,
+      "name": "测试客户1",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 8,
+      "name": "测试客户2",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 9,
+      "name": "测试客户3",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 10,
+      "name": "测试客户1",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 11,
+      "name": "测试客户2",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 12,
+      "name": "测试客户3",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 13,
+      "name": "dify",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 14,
+      "name": "flworks",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 15,
+      "name": "flworks",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 16,
+      "name": "dify",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 17,
+      "name": "dify",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 18,
+      "name": "测试客户1",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 19,
+      "name": "测试客户2",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 20,
+      "name": "测试客户3",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 21,
+      "name": "dify",
+      "isValid": true,
+      "issues": []
+    },
+    {
+      "id": 22,
+      "name": "flworks",
+      "isValid": true,
+      "issues": []
+    }
+  ]
+}

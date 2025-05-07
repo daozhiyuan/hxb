@@ -4,17 +4,20 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { AdminUserApproval } from '@/components/admin-user-approval';
+import { AdminPartnerList } from '@/components/admin-partner-list';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Role } from '@prisma/client';
+import { isAdmin } from '@/lib/auth-helpers';
 
 export default function AdminUsersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // 检查权限
+  // 检查权限 - 使用权限辅助函数
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.replace('/login');
-    } else if (status === 'authenticated' && session.user.role !== 'ADMIN') {
+    } else if (status === 'authenticated' && !isAdmin(session)) {
       router.replace('/unauthorized');
     }
   }, [status, session, router]);
@@ -29,7 +32,7 @@ export default function AdminUsersPage() {
   }
 
   // 只有管理员可以访问
-  if (status === 'authenticated' && session.user.role === 'ADMIN') {
+  if (status === 'authenticated' && isAdmin(session)) {
     return (
       <div className="container mx-auto py-10">
         <Card>
@@ -38,6 +41,8 @@ export default function AdminUsersPage() {
           </CardHeader>
           <CardContent>
             <AdminUserApproval />
+            <div className="my-8" />
+            <AdminPartnerList />
           </CardContent>
         </Card>
       </div>

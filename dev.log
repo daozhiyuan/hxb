@@ -1,0 +1,118 @@
+
+> nextn@0.1.0 dev
+> next dev -p 3005
+
+  ▲ Next.js 14.2.28
+  - Local:        http://localhost:3005
+  - Environments: .env.development.local, .env.local, .env.development, .env
+
+ ✓ Starting...
+ ✓ Ready in 4.6s
+ ○ Compiling /src/middleware ...
+ ✓ Compiled /src/middleware in 827ms (216 modules)
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 1054ms (217 modules)
+[next-auth][warn][DEBUG_ENABLED] 
+https://next-auth.js.org/warnings#debug_enabled
+ POST /api/auth/callback/credentials 302 in 1331ms
+ ○ Compiling / ...
+ ✓ Compiled / in 6.7s (1182 modules)
+ GET / 200 in 7239ms
+[next-auth][warn][DEBUG_ENABLED] 
+https://next-auth.js.org/warnings#debug_enabled
+ GET /api/auth/session 200 in 94ms
+ GET /api/auth/session 200 in 10ms
+ ○ Compiling /login ...
+ ✓ Compiled /login in 1837ms (1205 modules)
+[next-auth][warn][DEBUG_ENABLED] 
+https://next-auth.js.org/warnings#debug_enabled
+ GET /api/auth/providers 304 in 50ms
+ GET /api/auth/csrf 304 in 12ms
+ POST /api/auth/callback/credentials 200 in 279ms
+ GET /api/auth/session 200 in 11ms
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 755ms (1343 modules)
+ ○ Compiling /crm/customers ...
+ ✓ Compiled /crm/customers in 2.1s (1538 modules)
+ ○ Compiling /api/crm/customers ...
+ ✓ Compiled /api/crm/customers in 2.1s (1039 modules)
+[next-auth][warn][DEBUG_ENABLED] 
+https://next-auth.js.org/warnings#debug_enabled
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 2460ms
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 25ms
+ ○ Compiling /crm/customers/[id] ...
+ ✓ Compiled /crm/customers/[id] in 1470ms (2876 modules)
+ ✓ Compiled /api/crm/customers/[id] in 371ms (1612 modules)
+ ✓ Compiled (1614 modules)
+ GET /favicon.ico 200 in 1118ms
+[next-auth][warn][DEBUG_ENABLED] 
+https://next-auth.js.org/warnings#debug_enabled
+ GET /api/crm/customers/23 200 in 2047ms
+ GET /api/crm/customers/23 200 in 130ms
+ ✓ Compiled /api/crm/customers/[id]/follow-ups in 440ms (1616 modules)
+ ✓ Compiled (1618 modules)
+[next-auth][warn][DEBUG_ENABLED] 
+https://next-auth.js.org/warnings#debug_enabled
+ GET /api/crm/tags 200 in 1040ms
+ GET /api/crm/tags 200 in 87ms
+ GET /api/crm/customers/23/follow-ups?page=1&pageSize=10 200 in 2600ms
+ GET /api/crm/customers/23/follow-ups?page=1&pageSize=10 200 in 270ms
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 38ms
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 50ms
+ GET /api/crm/customers/23 200 in 125ms
+ GET /api/crm/customers/23 200 in 103ms
+ GET /api/crm/tags 200 in 78ms
+ GET /api/crm/customers/23/follow-ups?page=1&pageSize=10 200 in 158ms
+ GET /api/crm/tags 200 in 67ms
+ GET /api/crm/customers/23/follow-ups?page=1&pageSize=10 200 in 50ms
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 44ms
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 35ms
+[next-auth][warn][DEBUG_ENABLED] 
+https://next-auth.js.org/warnings#debug_enabled
+ GET /api/auth/providers 304 in 71ms
+ GET /api/auth/csrf 304 in 11ms
+ POST /api/auth/callback/credentials 200 in 169ms
+ GET /api/auth/session 200 in 14ms
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 22ms
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 25ms
+ GET /api/crm/customers/22 200 in 116ms
+ GET /api/crm/tags 200 in 90ms
+ GET /api/crm/customers/22 200 in 99ms
+ GET /api/crm/customers/22/follow-ups?page=1&pageSize=10 200 in 138ms
+ GET /api/crm/tags 200 in 143ms
+ GET /api/crm/customers/22/follow-ups?page=1&pageSize=10 200 in 49ms
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 19ms
+尝试使用安全查询辅助函数获取客户列表...
+成功获取客户列表: 10 条记录
+ GET /api/crm/customers?page=1&pageSize=10&search=&status=&sortBy=registrationDate&sortOrder=desc 200 in 18ms
+ GET /api/crm/customers/23 200 in 99ms
+ GET /api/crm/tags 200 in 187ms
+ GET /api/crm/customers/23/follow-ups?page=1&pageSize=10 200 in 189ms
+ GET /api/crm/customers/23 200 in 193ms
+ GET /api/crm/tags 200 in 39ms
+ GET /api/crm/customers/23/follow-ups?page=1&pageSize=10 200 in 45ms
+ ✓ Compiled in 2.8s (2518 modules)
+ ✓ Compiled in 1162ms (1306 modules)
+ ✓ Compiled in 715ms (1306 modules)
+ ✓ Compiled in 1329ms (1306 modules)
+ ✓ Compiled in 793ms (1306 modules)
+ ✓ Compiled in 627ms (1306 modules)
+ ✓ Compiled in 708ms (1306 modules)

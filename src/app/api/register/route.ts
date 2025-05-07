@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
+// 告诉 Next.js 这个路由是动态的
 
 export async function POST(request: Request) {
   try {

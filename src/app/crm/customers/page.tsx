@@ -29,6 +29,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
+import { CustomerAddDialog } from '@/components/customer-add-dialog';
 
 interface Customer {
   id: number;
@@ -38,14 +39,22 @@ interface Customer {
   email: string | null;
   status: string;
   notes: string | null;
-  registrationDate: string;
-  updatedAt: string;
+  registrationDate: Date | string;
+  updatedAt: Date | string;
   registeredBy?: {
     id: number;
     name: string | null;
     email: string;
   };
   jobTitle: string | null;
+  idCard: string;
+  createdAt: Date | string;
+}
+
+interface CustomerAddDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess: () => void;
 }
 
 export default function CRMCustomersPage() {
@@ -67,96 +76,31 @@ export default function CRMCustomersPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-  useEffect(() => {
+  const handleAddSuccess = () => {
     fetchCustomers();
-    // eslint-disable-next-line
-  }, [page, pageSize, searchQuery, filterStatus, sortBy, sortOrder]);
+    setShowAddDialog(false);
+  };
 
-  const fetchCustomers = async () => {
-    setIsLoading(true);
-    setError('');
+  const handleViewDetails = (customer: Customer) => {
+    window.location.href = `/crm/customers/${customer.id}`;
+  };
+
+  const formatDate = (date: Date | string | null | undefined) => {
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        pageSize: String(pageSize),
-        search: searchQuery,
-        status: filterStatus,
-        sortBy: sortBy,
-        sortOrder: sortOrder
-      });
-      
-      const response = await fetch(`/api/crm/customers?${params.toString()}`);
-      if (!response.ok) throw new Error('获取客户数据失败');
-      
-      const data = await response.json();
-      setCustomers(data.data);
-      setTotal(data.pagination.total);
-    } catch (err) {
-      setError('获取客户数据失败');
-      console.error(err);
-    } finally {
-      setIsLoading(false);
+      if (!date) return '-';
+      const dateObj = date instanceof Date ? date : new Date(date);
+      if (isNaN(dateObj.getTime())) {
+        console.warn('无效的日期值:', date);
+        return '-';
+      }
+      return format(dateObj, 'yyyy-MM-dd HH:mm');
+    } catch (error) {
+      console.error('日期格式化错误:', error, '原始日期值:', date);
+      return '-';
     }
   };
 
-  const handleExport = async () => {
-    try {
-      const params = new URLSearchParams({
-        search: searchQuery,
-        status: filterStatus
-      });
-      const response = await fetch(`/api/admin/export/customers?${params.toString()}`);
-      if (!response.ok) throw new Error('导出失败');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `客户列表_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert('导出失败');
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteCustomerId) return;
-    
-    setIsDeleting(true);
-    try {
-      const res = await fetch(`/api/crm/customers/${deleteCustomerId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('删除失败');
-      fetchCustomers();
-      setShowDeleteDialog(false);
-    } catch (err) {
-      console.error(err);
-      alert('删除失败');
-    } finally {
-      setIsDeleting(false);
-      setDeleteCustomerId(null);
-    }
-  };
-
-  const handleDeleteClick = (id: number) => {
-    setDeleteCustomerId(id);
-    setShowDeleteDialog(true);
-  };
-
-  const toggleSortOrder = () => {
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-  };
-
-  const handleSortByChange = (value: string) => {
-    if (value === sortBy) {
-      toggleSortOrder();
-    } else {
-      setSortBy(value);
-      setSortOrder('desc'); // 默认降序
-    }
-  };
-
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusVariant = (status: string) => {
     switch (status) {
       case 'FOLLOWING': return 'default';
       case 'NEGOTIATING': return 'outline';
@@ -262,255 +206,165 @@ export default function CRMCustomersPage() {
     </div>
   );
 
+  useEffect(() => {
+    fetchCustomers();
+    // eslint-disable-next-line
+  }, [page, pageSize, searchQuery, filterStatus, sortBy, sortOrder]);
+
+  const fetchCustomers = async () => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(pageSize),
+        search: searchQuery,
+        status: filterStatus,
+        sortBy: sortBy,
+        sortOrder: sortOrder
+      });
+      
+      const response = await fetch(`/api/crm/customers?${params.toString()}`);
+      if (!response.ok) throw new Error('获取客户数据失败');
+      
+      const data = await response.json();
+      setCustomers(data.data);
+      setTotal(data.pagination.total);
+    } catch (err) {
+      setError('获取客户数据失败');
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams({
+        search: searchQuery,
+        status: filterStatus
+      });
+      const response = await fetch(`/api/admin/export/customers?${params.toString()}`);
+      if (!response.ok) throw new Error('导出失败');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `客户列表_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('导出失败');
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteCustomerId) return;
+    
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/crm/customers/${deleteCustomerId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('删除失败');
+      fetchCustomers();
+      setShowDeleteDialog(false);
+    } catch (err) {
+      console.error(err);
+      alert('删除失败');
+    } finally {
+      setIsDeleting(false);
+      setDeleteCustomerId(null);
+    }
+  };
+
+  const handleDeleteClick = (id: number) => {
+    setDeleteCustomerId(id);
+    setShowDeleteDialog(true);
+  };
+
+  const toggleSortOrder = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  const handleSortByChange = (value: string) => {
+    if (value === sortBy) {
+      toggleSortOrder();
+    } else {
+      setSortBy(value);
+      setSortOrder('desc'); // 默认降序
+    }
+  };
+
   return (
     <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      <div className="flex flex-col space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-2xl font-bold">客户管理</h1>
-          <div className="flex gap-2 self-end sm:self-auto">
-            {session?.user?.role === 'ADMIN' && (
-              <Button size="sm" variant="outline" onClick={handleExport} title="导出客户列表">
-                <Download className="h-4 w-4 mr-1" /> 导出
-              </Button>
-            )}
-            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-              <DialogTrigger asChild>
-                <Button size="sm" variant="default">
-                  <Plus className="h-4 w-4 mr-1" /> 新增客户
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>新增客户</DialogTitle>
-                  <DialogDescription>
-                    填写客户信息，创建新客户记录
-                  </DialogDescription>
-                </DialogHeader>
-                {/* 新增客户表单 */}
-                <AddCustomerForm onSuccess={() => { setShowAddDialog(false); fetchCustomers(); }} />
-              </DialogContent>
-            </Dialog>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">报备详情</h1>
+        <Button onClick={() => setShowAddDialog(true)}>
+          新增报备
+        </Button>
+      </div>
+
+      {/* 客户列表 */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-6">
+          {/* 搜索和筛选 */}
+          <div className="mb-4">
+            <Input
+              placeholder="搜索客户..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+
+          {/* 客户列表表格 */}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>姓名</TableHead>
+                  <TableHead>身份证号</TableHead>
+                  <TableHead>手机号</TableHead>
+                  <TableHead>报备时间</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customers.map((customer) => (
+                  <TableRow key={customer.id}>
+                    <TableCell>{customer.name}</TableCell>
+                    <TableCell>{customer.idCard}</TableCell>
+                    <TableCell>{customer.phone}</TableCell>
+                    <TableCell>{formatDate(customer.createdAt)}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusVariant(customer.status)}>
+                        {getStatusText(customer.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDetails(customer)}
+                      >
+                        查看详情
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </div>
-
-        <Card className="shadow-sm hover:shadow transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between py-4">
-            <CardTitle className="text-lg font-medium">客户列表</CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={fetchCustomers}
-              title="刷新"
-            >
-              <RefreshCcw className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
-              {/* 搜索框 */}
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="搜索客户名称、公司名称、电话或邮箱..."
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-                  className="pl-8 w-full"
-                />
-              </div>
-              
-              {/* 状态筛选 */}
-              <div className="flex items-center space-x-2 w-full md:w-auto">
-                <Select
-                  value={filterStatus}
-                  onValueChange={(value) => { setFilterStatus(value); setPage(1); }}
-                >
-                  <SelectTrigger className="h-10 w-full md:w-[180px]">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="状态筛选" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                {/* 排序选项 */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-10 w-10">
-                      {sortOrder === 'asc' ? (
-                        <SortAsc className="h-4 w-4" />
-                      ) : (
-                        <SortDesc className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    {sortOptions.map((option) => (
-                      <DropdownMenuItem 
-                        key={option.value}
-                        onClick={() => handleSortByChange(option.value)}
-                        className="flex justify-between"
-                      >
-                        {option.label}
-                        {sortBy === option.value && (
-                          sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                        )}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-            
-            {error && (
-              <div className="bg-red-50 p-4 rounded-md mb-4 text-red-800 text-center">
-                {error}
-                <Button 
-                  variant="link" 
-                  className="ml-2 text-red-800 underline" 
-                  onClick={fetchCustomers}
-                >
-                  重试
-                </Button>
-              </div>
-            )}
-            
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <div key={index} className="flex items-center space-x-4">
-                    <Skeleton className="h-12 w-full" />
-                  </div>
-                ))}
-              </div>
-            ) : customers.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <div className="text-lg font-medium mb-1">暂无客户数据</div>
-                <p className="text-sm mb-4">添加第一位客户或调整搜索条件</p>
-                <Button onClick={() => setShowAddDialog(true)}>
-                  <Plus className="h-4 w-4 mr-1" /> 添加客户
-                </Button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[180px]">客户名称</TableHead>
-                      <TableHead className="hidden md:table-cell">公司名称</TableHead>
-                      <TableHead className="hidden lg:table-cell">联系方式</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead className="hidden md:table-cell">报备人</TableHead>
-                      <TableHead className="hidden sm:table-cell">报备时间</TableHead>
-                      <TableHead className="text-right">操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customers.map((customer) => (
-                      <TableRow key={customer.id} className="hover:bg-accent/5">
-                        <TableCell className="font-medium">
-                          <div className="flex flex-col">
-                            <span>{customer.name}</span>
-                            {customer.jobTitle && (
-                              <span className="text-xs text-muted-foreground mt-1">{customer.jobTitle}</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {customer.companyName || "-"}
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <div className="flex flex-col space-y-1">
-                            {customer.phone && (
-                              <div className="flex items-center text-xs">
-                                <Phone className="h-3 w-3 mr-1 text-muted-foreground" /> 
-                                <span>{customer.phone}</span>
-                              </div>
-                            )}
-                            {customer.email && (
-                              <div className="flex items-center text-xs">
-                                <Mail className="h-3 w-3 mr-1 text-muted-foreground" /> 
-                                <span>{customer.email}</span>
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(customer.status)}>
-                            {getStatusText(customer.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {customer.registeredBy?.name || customer.registeredBy?.email || "-"}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                          {format(new Date(customer.registrationDate), 'yyyy-MM-dd')}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end space-x-2">
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
-                              asChild 
-                              className="h-8 w-8 p-0" 
-                              title="查看详情"
-                            >
-                              <Link href={`/crm/customers/${customer.id}`}>
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            
-                            {session?.user?.role === 'ADMIN' && (
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50" 
-                                title="删除客户"
-                                onClick={() => handleDeleteClick(customer.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-            
-            {!isLoading && customers.length > 0 && renderPagination()}
-          </CardContent>
-        </Card>
       </div>
-      
-      {/* 删除确认弹窗 */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
-            <AlertDialogDescription>
-              删除操作不可撤销，客户的所有跟进记录也将被删除。确定要继续吗？
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm}
-              disabled={isDeleting}
-              className="bg-red-500 hover:bg-red-600"
-            >
-              {isDeleting ? '删除中...' : '删除'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+      {/* 新增客户对话框 */}
+      <CustomerAddDialog
+        isOpen={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onSuccess={handleAddSuccess}
+      />
     </div>
   );
 }
@@ -587,4 +441,4 @@ function AddCustomerForm({ onSuccess }: { onSuccess: () => void }) {
       </div>
     </form>
   );
-} 
+}

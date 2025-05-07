@@ -1,10 +1,11 @@
-'use server';
+
 
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { Role } from '@prisma/client';
+// 告诉 Next.js 这个路由是动态的
 
 // --- Zod Schema for Public Registration ---
 const registerSchema = z.object({

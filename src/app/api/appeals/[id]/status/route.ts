@@ -1,141 +1,100 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
-import { AppealStatus } from '@prisma/client';
-import { sendEmail } from '@/lib/email';
+import { AppealStatus, Role } from '@prisma/client';
+import { hasPermission } from '@/lib/auth-helpers';
 
-// 状态更新请求的数据验证 Schema
-const updateStatusSchema = z.object({
+// 直接定义API配置属性
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const fetchCache = 'force-no-store';
+export const revalidate = 0;
+export const dynamicParams = true;
+
+// Schema for validating the PATCH request body
+const updateAppealSchema = z.object({
   status: z.nativeEnum(AppealStatus),
-  remarks: z.string().min(1, { message: '处理备注不能为空' }).max(500),
+  remarks: z.string().min(1, '请输入处理意见'),
 });
 
-// PATCH: 更新申诉状态
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+// PATCH: 处理申诉状态更新
+export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    
+    // 使用权限辅助函数检查是否有管理员权限
+    if (!hasPermission(session, null, Role.ADMIN)) {
       return NextResponse.json({ message: '未授权操作' }, { status: 403 });
     }
 
+    // 此时session已经通过了hasPermission检查，所以一定非空
+    if (!session || !session.user) {
+      return NextResponse.json({ message: '未授权操作' }, { status: 403 });
+    }
+
+    // Parse and validate request body
+    const body = await request.json();
+    const validation = updateAppealSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json({ message: '请求数据无效', errors: validation.error.format() }, { status: 400 });
+    }
+
+    const { status, remarks } = validation.data;
+
+    // Check if appeal exists
     const appealId = parseInt(params.id, 10);
     if (isNaN(appealId)) {
       return NextResponse.json({ message: '无效的申诉ID' }, { status: 400 });
     }
-
-    // 验证请求数据
-    const body = await request.json();
-    const validation = updateStatusSchema.safeParse(body);
-
-    if (!validation.success) {
-      return NextResponse.json(
-        { message: '请求数据无效', errors: validation.error.format() },
-        { status: 400 }
-      );
-    }
-
-    const { status: newStatus, remarks } = validation.data;
-
-    // 获取当前申诉信息
-    const currentAppeal = await prisma.appeal.findUnique({
+    
+    const appeal = await prisma.appeal.findUnique({
       where: { id: appealId },
-      include: {
-        partner: {
-          select: {
-            email: true,
-            name: true,
-          },
-        },
-      },
     });
 
-    if (!currentAppeal) {
+    if (!appeal) {
       return NextResponse.json({ message: '申诉不存在' }, { status: 404 });
     }
 
-    // 检查状态流转是否合法
-    const isValidStatusTransition = checkStatusTransition(currentAppeal.status, newStatus);
-    if (!isValidStatusTransition) {
-      return NextResponse.json(
-        { message: '非法的状态变更' },
-        { status: 400 }
-      );
+    if (appeal.status !== AppealStatus.PENDING && appeal.status !== AppealStatus.PROCESSING) {
+      return NextResponse.json({ message: '该申诉已处理完成，无法再次修改状态' }, { status: 400 });
     }
 
     // 更新申诉状态
-    const updatedAppeal = await prisma.appeal.update({
-      where: { id: appealId },
-      data: {
-        status: newStatus,
-        remarks,
-        operatorId: parseInt(session.user.id, 10),
-      },
-      include: {
-        partner: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
+    const updatedAppeal = await prisma.$transaction(async (tx) => {
+      // 更新申诉
+      const updated = await tx.appeal.update({
+        where: { id: appealId },
+        data: {
+          status,
+          remarks,
+          operatorId: Number(session.user.id),
+          processedAt: new Date(),
         },
-        operator: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    // 创建审计日志
-    await prisma.appealLog.create({
-      data: {
-        appealId,
-        action: 'STATUS_UPDATE',
-        operatorId: parseInt(session.user.id, 10),
-        remarks: `状态更新: ${currentAppeal.status} -> ${newStatus}, 备注: ${remarks}`,
-      },
-    });
-
-    // 发送邮件通知
-    if (currentAppeal.partner.email) {
-      await sendEmail({
-        to: currentAppeal.partner.email,
-        subject: `申诉状态更新通知 - ${updatedAppeal.id}`,
-        text: `尊敬的${currentAppeal.partner.name}：
-        
-您的申诉（编号：${updatedAppeal.id}）状态已更新为：${newStatus}
-处理备注：${remarks}
-
-如有疑问，请联系客服。`,
       });
-    }
 
-    return NextResponse.json(updatedAppeal);
+      // 创建操作日志
+      await tx.appealLog.create({
+        data: {
+          appealId,
+          action: 'STATUS_UPDATE',
+          remarks: `状态更新: ${status} - ${remarks}`,
+          operatorId: Number(session.user.id),
+        },
+      });
 
+      return updated;
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      message: '申诉状态已更新',
+      appeal: updatedAppeal
+    });
   } catch (error) {
     console.error('更新申诉状态失败:', error);
-    return NextResponse.json(
-      { message: '更新申诉状态失败', error: error instanceof Error ? error.message : '未知错误' },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: '更新申诉状态失败' }, { status: 500 });
   }
-}
-
-// 检查状态流转是否合法
-function checkStatusTransition(currentStatus: AppealStatus, newStatus: AppealStatus): boolean {
-  const validTransitions = {
-    [AppealStatus.PENDING]: [AppealStatus.PROCESSING, AppealStatus.APPROVED, AppealStatus.REJECTED],
-    [AppealStatus.PROCESSING]: [AppealStatus.APPROVED, AppealStatus.REJECTED],
-    [AppealStatus.APPROVED]: [],
-    [AppealStatus.REJECTED]: [],
-  };
-
-  return validTransitions[currentStatus].includes(newStatus);
 } 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,8 +17,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from 'react';
-import {CustomerStatus} from "@prisma/client";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
+// 不再直接引入Prisma枚举
+// import { customers_status } from "@prisma/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CustomerStatusEnum, CustomerStatusText } from "@/config/client-config";
+
+// 客户状态枚举值列表，用于zod
+const validStatuses = Object.values(CustomerStatusEnum);
 
 // Re-define the schema for client-side validation (can be shared from a common file later)
 const formSchema = z.object({
@@ -34,7 +38,7 @@ const formSchema = z.object({
   idCardNumber: z.string().regex(/^\d{17}(\d|X)$/i, { message: "请输入有效的18位身份证号码" }).trim(),
   phone: z.string().optional(),
   address: z.string().optional(),
-  status: z.nativeEnum(CustomerStatus).default(CustomerStatus.FOLLOWING).optional(),
+  status: z.enum(validStatuses as [string, ...string[]]).default(CustomerStatusEnum.FOLLOWING),
   notes: z.string().optional(),
   jobTitle: z.string().optional().nullable(), // Added jobTitle
 });
@@ -54,7 +58,7 @@ export function CustomerRegistrationForm() {
       idCardNumber: "",
       phone: "",
       address: "",
-      status: CustomerStatus.FOLLOWING,
+      status: CustomerStatusEnum.FOLLOWING,
       notes: "",
       jobTitle: "", // Added jobTitle
     },
@@ -122,7 +126,7 @@ export function CustomerRegistrationForm() {
             <FormItem>
               <FormLabel>客户姓名 *</FormLabel>
               <FormControl>
-                <Input placeholder="请输入客户姓名" {...field} disabled={isLoading} />
+                <Input placeholder="请输入客户姓名" {...field} disabled={isLoading} value={field.value || ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -135,7 +139,7 @@ export function CustomerRegistrationForm() {
                   <FormItem>
                       <FormLabel>单位名称</FormLabel>
                       <FormControl>
-                          <Input placeholder="请输入单位名称 (可选)" {...field} disabled={isLoading} />
+                          <Input placeholder="请输入单位名称 (可选)" {...field} disabled={isLoading} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                   </FormItem>
@@ -148,7 +152,7 @@ export function CustomerRegistrationForm() {
                   <FormItem>
                       <FormLabel>去年营收</FormLabel>
                       <FormControl>
-                          <Input placeholder="请输入去年营收 (可选)" {...field} disabled={isLoading} />
+                          <Input placeholder="请输入去年营收 (可选)" {...field} disabled={isLoading} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                   </FormItem>
@@ -161,7 +165,7 @@ export function CustomerRegistrationForm() {
                   <FormItem>
                       <FormLabel>职务</FormLabel>
                       <FormControl>
-                          <Input placeholder="请输入客户职务 (可选)" {...field} disabled={isLoading} />
+                          <Input placeholder="请输入客户职务 (可选)" {...field} disabled={isLoading} value={field.value || ''} />
                       </FormControl>
                       <FormMessage />
                   </FormItem>
@@ -174,7 +178,7 @@ export function CustomerRegistrationForm() {
             <FormItem>
               <FormLabel>身份证号码 *</FormLabel>
               <FormControl>
-                <Input placeholder="请输入18位身份证号码" {...field} disabled={isLoading} />
+                <Input placeholder="请输入18位身份证号码" {...field} disabled={isLoading} value={field.value || ''} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -187,7 +191,7 @@ export function CustomerRegistrationForm() {
             <FormItem>
               <FormLabel>联系电话</FormLabel>
               <FormControl>
-                <Input placeholder="请输入客户联系电话 (可选)" {...field} value={field.value ?? ''} disabled={isLoading}/>
+                <Input placeholder="请输入客户联系电话 (可选)" {...field} value={field.value || ''} disabled={isLoading}/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -200,7 +204,7 @@ export function CustomerRegistrationForm() {
             <FormItem>
               <FormLabel>联系地址</FormLabel>
               <FormControl>
-                <Input placeholder="请输入客户联系地址 (可选)" {...field} value={field.value ?? ''} disabled={isLoading}/>
+                <Input placeholder="请输入客户联系地址 (可选)" {...field} value={field.value || ''} disabled={isLoading}/>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -220,13 +224,12 @@ export function CustomerRegistrationForm() {
                               </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                              <SelectItem value="FOLLOWING">跟进中</SelectItem>
-                              <SelectItem value="NEGOTIATING">洽谈中</SelectItem>
-                              <SelectItem value="PENDING">待定</SelectItem>
-                              <SelectItem value="SIGNED">已签约</SelectItem>
-                              <SelectItem value="COMPLETED">已完成</SelectItem>
-                              <SelectItem value="LOST">已流失</SelectItem>
-                              <SelectItem value="OTHER">其他</SelectItem>
+                              <SelectItem value={CustomerStatusEnum.FOLLOWING}>{CustomerStatusText.FOLLOWING}</SelectItem>
+                              <SelectItem value={CustomerStatusEnum.NEGOTIATING}>{CustomerStatusText.NEGOTIATING}</SelectItem>
+                              <SelectItem value={CustomerStatusEnum.PENDING}>{CustomerStatusText.PENDING}</SelectItem>
+                              <SelectItem value={CustomerStatusEnum.SIGNED}>{CustomerStatusText.SIGNED}</SelectItem>
+                              <SelectItem value={CustomerStatusEnum.COMPLETED}>{CustomerStatusText.COMPLETED}</SelectItem>
+                              <SelectItem value={CustomerStatusEnum.LOST}>{CustomerStatusText.LOST}</SelectItem>
                           </SelectContent>
                       </Select>
                       <FormMessage />
@@ -240,7 +243,7 @@ export function CustomerRegistrationForm() {
             <FormItem>
               <FormLabel>备注</FormLabel>
               <FormControl>
-                <Textarea placeholder="请输入备注信息 (可选)" {...field} value={field.value ?? ''} disabled={isLoading}/>
+                <Textarea placeholder="请输入备注信息 (可选)" {...field} value={field.value || ''} disabled={isLoading}/>
               </FormControl>
               <FormMessage />
             </FormItem>

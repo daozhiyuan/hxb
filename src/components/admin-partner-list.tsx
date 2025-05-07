@@ -39,13 +39,43 @@ export function AdminPartnerList({ refreshTrigger = 0 }: AdminPartnerListProps) 
     setIsLoading(true);
     setError(null);
     console.log("Fetching partners..."); // Add log for debugging refresh
-    try {
-      const response = await fetch('/api/admin/partners');
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '获取合作伙伴列表失败');
+    
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const attemptFetch = async (): Promise<Partner[]> => {
+      try {
+        const response = await fetch('/api/admin/partners', {
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `获取合作伙伴列表失败 (HTTP ${response.status})`);
+        }
+        
+        const data: Partner[] = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error('服务器返回的数据格式不正确');
+        }
+        
+        return data;
+      } catch (err: any) {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`重试获取合作伙伴列表 (${retryCount}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // 递增延迟
+          return attemptFetch();
+        }
+        throw err;
       }
-      const data: Partner[] = await response.json();
+    };
+    
+    try {
+      const data = await attemptFetch();
       setPartners(data);
     } catch (err: any) {
       console.error("获取合作伙伴列表失败 (Admin):", err);

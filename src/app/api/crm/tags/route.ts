@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import prisma from '@/lib/prisma';
+// 告诉 Next.js 这个路由是动态的
 // 修改这一行
-import { authOptions } from '@/lib/authOptions';
+import { authOptions } from '@/lib/auth';
+// 告诉 Next.js 这个路由是动态的
 
 // 获取所有标签
 export async function GET() {

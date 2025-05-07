@@ -31,6 +31,7 @@ export function FollowUpList({ customerId }: FollowUpListProps) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
   const pageSize = 10;
 
   useEffect(() => {
@@ -54,7 +55,9 @@ export function FollowUpList({ customerId }: FollowUpListProps) {
         throw new Error('获取跟进记录失败');
       }
       
-      const data = await response.json();
+      const result = await response.json();
+      const data = result.data || [];
+      const pagination = result.pagination || { totalPages: 0 };
       
       if (isInitialLoad) {
         setFollowUps(data);
@@ -62,8 +65,8 @@ export function FollowUpList({ customerId }: FollowUpListProps) {
         setFollowUps(prev => [...prev, ...data]);
       }
       
-      // 如果返回的记录数量等于pageSize，说明可能还有更多记录
-      setHasMore(data.length === pageSize);
+      setTotalPages(pagination.totalPages);
+      setHasMore(nextPage < pagination.totalPages);
     } catch (error) {
       console.error('获取跟进记录失败:', error);
       setError('获取跟进记录失败，请重试');

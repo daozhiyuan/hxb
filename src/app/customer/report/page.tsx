@@ -9,6 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Icons } from '@/components/icons';
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { API_BASE_URL, CustomerStatusEnum } from '@/config/client-config';
+import { useRouter } from 'next/navigation'; // 导入路由钩子
+// 不要在客户端组件中直接导入Prisma模型
+// import { CustomerStatus } from '@prisma/client';
 
 export default function CustomerReportPage() {
   const [idNumber, setIdNumber] = useState('');
@@ -17,14 +21,21 @@ export default function CustomerReportPage() {
   const [lastYearRevenue, setLastYearRevenue] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  // Add state for jobTitle and notes if you add input fields for them
-  // const [jobTitle, setJobTitle] = useState(''); 
-  // const [notes, setNotes] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [source, setSource] = useState('');
+  const [position, setPosition] = useState('');
+  const [notes, setNotes] = useState('');
   const [isDuplicate, setIsDuplicate] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false); // For duplication check
   const [submitting, setSubmitting] = useState(false); // For form submission
   const { toast } = useToast();
-  const [customerStatus, setCustomerStatus] = useState('FOLLOWING'); // Default status
+  const [customerStatus, setCustomerStatus] = useState<string>(CustomerStatusEnum.FOLLOWING); // 使用客户端枚举
+  const router = useRouter(); // 初始化路由钩子
+
+  const handleCustomerStatusChange = (value: string) => {
+    setCustomerStatus(value);
+  };
 
   const handleCheckDuplication = async () => {
     if (!idNumber) {
@@ -39,9 +50,12 @@ export default function CustomerReportPage() {
     setIsDuplicate(null); // Reset previous check
 
     try {
-      // Assuming checkCustomerDuplication makes an API call to check duplication
-      // If it doesn't, this logic needs adjustment.
-      const result = await checkCustomerDuplication(input);
+      // 使用相对路径而非绝对URL
+      const response = await fetch(`/api/customers/check-duplicate?idNumber=${encodeURIComponent(idNumber)}`, {
+        method: 'GET',
+      });
+      
+      const result = await response.json();
       setIsDuplicate(result.isDuplicate);
 
       if (result.isDuplicate) {
@@ -106,17 +120,23 @@ export default function CustomerReportPage() {
     const customerData = {
       name,
       idCardNumber: idNumber,
-      companyName: companyName || null, // Send null if empty
+      companyName: companyName || null,
       lastYearRevenue: lastYearRevenue ? parseFloat(lastYearRevenue) : null,
-      phone: phone || null, // Send null if empty
-      address: address || null, // Send null if empty
+      phone: phone || null,
+      address: address || null,
       status: customerStatus,
-      // Add jobTitle and notes here if you have input fields for them
-      // jobTitle: jobTitle || null,
-      // notes: notes || null,
+      jobTitle: jobTitle || null,
+      industry: industry || null,
+      source: source || null,
+      position: position || null,
+      notes: notes || null,
     };
+    
+    console.log('提交客户数据:', customerData);
 
     try {
+      console.log('开始提交客户数据...');
+      // 使用相对路径而非绝对URL
       const response = await fetch('/api/customers/register', {
         method: 'POST',
         headers: {
@@ -125,54 +145,74 @@ export default function CustomerReportPage() {
         body: JSON.stringify(customerData),
       });
 
-      const result = await response.json(); // Try to parse JSON regardless of status
+      console.log('API响应状态:', response.status);
+      const result = await response.json();
+      console.log('API响应结果:', result);
 
       if (!response.ok) {
-        // Handle API errors (like unauthorized, validation errors, conflict, etc.)
         throw new Error(result.message || `服务器错误: ${response.statusText} (${response.status})`);
       }
 
       // Submission successful
       toast({
         title: '提交成功',
-        description: '客户信息已成功提交!',
+        description: result.message || '客户信息已成功提交！即将返回客户列表...',
       });
 
       // Clear the form
-      setIdNumber('');
-      setName('');
-      setCompanyName('');
-      setLastYearRevenue('');
-      setPhone('');
-      setAddress('');
-      setIsDuplicate(null);
-      setCustomerStatus('FOLLOWING');
-      // Clear other fields like jobTitle, notes if added
-      // setJobTitle('');
-      // setNotes('');
+      clearForm();
+      
+      // 延迟两秒后跳转，确保用户能看到提交成功的提示
+      setTimeout(() => {
+        router.push('/crm/customers');
+      }, 2000);
 
     } catch (error: any) {
       console.error('提交报备失败', error);
       toast({
         title: '提交失败',
-        // Display specific error from API if available, otherwise generic message
         description: error.message || '提交客户信息时发生错误，请重试。',
         variant: 'destructive',
       });
     } finally {
-      setSubmitting(false); // End submission loading state
+      setSubmitting(false);
     }
   };
+
+  // 在清除表单时也使用客户端枚举
+  const clearForm = () => {
+    setIdNumber('');
+    setName('');
+    setCompanyName('');
+    setLastYearRevenue('');
+    setPhone('');
+    setAddress('');
+    setJobTitle('');
+    setIndustry('');
+    setSource('');
+    setPosition('');
+    setNotes('');
+    setIsDuplicate(null);
+    setCustomerStatus(CustomerStatusEnum.FOLLOWING);
+  }
 
   return (
     <div className="container mx-auto py-10">
       <Card className="max-w-3xl mx-auto">
         <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
           <CardTitle>客户报备</CardTitle>
           <CardDescription>请填写客户的详细信息。提交前请先检查客户是否重复。</CardDescription>
+            </div>
+            <Button variant="outline" onClick={() => router.push('/crm/customers')}>
+              返回客户列表
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* 基本信息字段 - 必填项 */}
             <div>
               <Label htmlFor="idNumber">身份证号码 <span className="text-red-500">*</span></Label>
               <Input
@@ -198,28 +238,6 @@ export default function CustomerReportPage() {
               />
             </div>
             <div>
-              <Label htmlFor="companyName">单位名称</Label>
-              <Input
-                type="text"
-                id="companyName"
-                placeholder="请输入单位名称 (可选)"
-                value={companyName}
-                onChange={e => setCompanyName(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="lastYearRevenue">去年营收 (元)</Label>
-              <Input
-                type="number"
-                id="lastYearRevenue"
-                placeholder="请输入去年营收 (可选)"
-                value={lastYearRevenue}
-                onChange={e => setLastYearRevenue(e.target.value)}
-                min="0" // Prevent negative numbers
-                step="any" // Allow decimals
-              />
-            </div>
-            <div>
               <Label htmlFor="phone">电话号码 <span className="text-red-500">*</span></Label>
               <Input
                 type="tel"
@@ -242,31 +260,82 @@ export default function CustomerReportPage() {
                 aria-required="true"
               />
             </div>
-            {/* Add inputs for jobTitle and notes here if needed */}
-            {/* Example:
+            
+            {/* 公司相关信息 - 选填项 */}
+            <div>
+              <Label htmlFor="companyName">单位名称</Label>
+              <Input
+                type="text"
+                id="companyName"
+                placeholder="请输入单位名称 (可选)"
+                value={companyName}
+                onChange={e => setCompanyName(e.target.value)}
+              />
+            </div>
             <div>
               <Label htmlFor="jobTitle">职位</Label>
-              <Input type="text" id="jobTitle" placeholder="请输入职位 (可选)" value={jobTitle} onChange={e => setJobTitle(e.target.value)} />
+              <Input
+                id="jobTitle"
+                placeholder="请输入客户职位"
+                value={jobTitle}
+                onChange={e => setJobTitle(e.target.value)}
+              />
+            </div>
+            
+            {/* 其他信息 - 选填项 */}
+            <div>
+              <Label htmlFor="industry">行业</Label>
+              <Input
+                id="industry"
+                placeholder="请输入客户行业"
+                value={industry}
+                onChange={e => setIndustry(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastYearRevenue">去年营收 (元)</Label>
+              <Input
+                type="number"
+                id="lastYearRevenue"
+                placeholder="请输入去年营收 (可选)"
+                value={lastYearRevenue}
+                onChange={e => setLastYearRevenue(e.target.value)}
+                min="0"
+                step="any"
+              />
+            </div>
+            <div>
+              <Label htmlFor="source">来源</Label>
+              <Input
+                id="source"
+                placeholder="请输入客户来源"
+                value={source}
+                onChange={e => setSource(e.target.value)}
+              />
             </div>
             <div>
               <Label htmlFor="notes">备注</Label>
-              <Textarea id="notes" placeholder="请输入备注 (可选)" value={notes} onChange={e => setNotes(e.target.value)} />
+              <Textarea
+                id="notes"
+                placeholder="请输入客户备注"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+              />
             </div>
-            */}
+            
             <div>
                 <Label>客户状态 <span className="text-red-500">*</span></Label>
-                <Select onValueChange={setCustomerStatus} defaultValue={customerStatus}>
+                <Select onValueChange={handleCustomerStatusChange} defaultValue={customerStatus}>
                     <SelectTrigger className="w-full md:w-[180px]">
                         <SelectValue placeholder="选择状态" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="FOLLOWING">跟进中</SelectItem>
-                        <SelectItem value="NEGOTIATING">洽谈中</SelectItem>
-                        <SelectItem value="PENDING">待定</SelectItem>
-                        <SelectItem value="SIGNED">已签约</SelectItem>
-                        <SelectItem value="COMPLETED">已完成</SelectItem>
-                        <SelectItem value="LOST">已流失</SelectItem>
-                        <SelectItem value="OTHER">其他</SelectItem>
+                        <SelectItem value={CustomerStatusEnum.FOLLOWING}>跟进中</SelectItem>
+                        <SelectItem value={CustomerStatusEnum.NEGOTIATING}>洽谈中</SelectItem>
+                        <SelectItem value={CustomerStatusEnum.PENDING}>待定</SelectItem>
+                        <SelectItem value={CustomerStatusEnum.SIGNED}>已签约</SelectItem>
+                        <SelectItem value={CustomerStatusEnum.COMPLETED}>已完成</SelectItem>
+                        <SelectItem value={CustomerStatusEnum.LOST}>已流失</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -283,7 +352,16 @@ export default function CustomerReportPage() {
                 )}
               </Button>
 
-              <Button type="submit" disabled={loading || submitting || isDuplicate === true || isDuplicate === null} className="w-full sm:w-auto">
+              <Button 
+                type="submit" 
+                disabled={loading || submitting || isDuplicate === true || isDuplicate === null} 
+                className="w-full sm:w-auto"
+                onClick={(e) => {
+                  if (!loading && !submitting && isDuplicate === false) {
+                    handleSubmit(e as unknown as FormEvent<HTMLFormElement>);
+                  }
+                }}
+              >
                 {submitting ? (
                   <>
                     <Icons.loader className="mr-2 h-4 w-4 animate-spin" />

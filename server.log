@@ -1,0 +1,12 @@
+Starting server on port 3005 with keepAliveTimeout 120000ms
+  ▲ Next.js 14.2.28
+  - Local:        http://localhost:3005
+  - Network:      http://0.0.0.0:3005
+
+ ✓ Starting...
+[Error: ENOENT: no such file or directory, open '/home/ubu-1/keyingbao/.next/prerender-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/home/ubu-1/keyingbao/.next/prerender-manifest.json'
+}

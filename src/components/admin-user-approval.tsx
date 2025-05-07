@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Card,
   CardContent,
@@ -27,55 +27,101 @@ interface PendingUser {
 export function AdminUserApproval() {
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // 获取待审核用户列表
-  const fetchPendingUsers = async () => {
+  const fetchPendingUsers = useCallback(async (retryCount = 0) => {
+    const maxRetries = 3;
+    setLoading(true);
+    setError(null);
+
     try {
-      const response = await fetch('/api/admin/users/pending');
-      if (!response.ok) {
-        throw new Error('获取待审核用户列表失败');
-      }
-      const data = await response.json();
-      setPendingUsers(data.users);
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: '错误',
-        description: '获取待审核用户列表失败，请稍后重试',
+      console.log(`尝试获取待审核用户列表 (第 ${retryCount + 1} 次)`);
+      const response = await fetch('/api/admin/users/pending', {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || '获取待审核用户列表失败');
+      }
+
+      const data = await response.json();
+      if (!data.users || !Array.isArray(data.users)) {
+        throw new Error('返回数据格式不正确');
+      }
+
+      setPendingUsers(data.users);
+      console.log(`成功获取到 ${data.users.length} 个待审核用户`);
+    } catch (error) {
+      console.error('获取待审核用户列表失败:', error);
+      setError(error instanceof Error ? error.message : '未知错误');
+
+      if (retryCount < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+        console.log(`${delay}ms 后重试...`);
+        setTimeout(() => fetchPendingUsers(retryCount + 1), delay);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: '错误',
+          description: '获取待审核用户列表失败，请稍后重试',
+        });
+      }
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [toast]);
 
   // 处理用户激活/禁用
   const handleUserActivation = async (userId: number, activate: boolean) => {
+    console.log('按钮点击事件触发:', { userId, activate });
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/users/${userId}/activate`, {
+      console.log(`开始${activate ? '激活' : '禁用'}用户 ${userId}...`);
+      
+      const url = `/api/admin/users/${userId}/activate`;
+      console.log('请求URL:', url);
+      
+      const response = await fetch(url, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({ isActive: activate }),
       });
 
+      console.log('收到响应:', response.status);
+      const data = await response.json();
+      console.log('响应数据:', data);
+      
       if (!response.ok) {
-        throw new Error('操作失败');
+        console.error('操作失败:', data);
+        throw new Error(data.message || '操作失败');
       }
 
-      const data = await response.json();
+      console.log('操作成功:', data);
       toast({
         title: '成功',
         description: data.message,
       });
 
       // 刷新用户列表
-      fetchPendingUsers();
+      console.log('开始刷新用户列表...');
+      await fetchPendingUsers();
+      console.log('用户列表刷新完成');
     } catch (error) {
+      console.error('操作失败:', error);
       toast({
         variant: 'destructive',
         title: '错误',
-        description: '操作失败，请稍后重试',
+        description: error instanceof Error ? error.message : '操作失败，请稍后重试',
       });
     } finally {
       setLoading(false);
@@ -85,7 +131,7 @@ export function AdminUserApproval() {
   // 组件加载时获取待审核用户列表
   useEffect(() => {
     fetchPendingUsers();
-  }, []);
+  }, [fetchPendingUsers]);
 
   return (
     <Card>
@@ -94,7 +140,16 @@ export function AdminUserApproval() {
         <CardDescription>管理待审核的合作伙伴账号</CardDescription>
       </CardHeader>
       <CardContent>
-        {pendingUsers.length === 0 ? (
+        {loading && pendingUsers.length === 0 ? (
+          <p className="text-center text-muted-foreground">加载中...</p>
+        ) : error ? (
+          <div className="text-center">
+            <p className="text-destructive mb-4">{error}</p>
+            <Button onClick={() => fetchPendingUsers()} variant="outline">
+              重试
+            </Button>
+          </div>
+        ) : pendingUsers.length === 0 ? (
           <p className="text-center text-muted-foreground">暂无待审核用户</p>
         ) : (
           <Table>
@@ -118,8 +173,10 @@ export function AdminUserApproval() {
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => handleUserActivation(user.id, true)}
-                      disabled={loading}
+                      onClick={() => {
+                        console.log('通过按钮点击:', user.id);
+                        handleUserActivation(user.id, true);
+                      }}
                       className="mr-2"
                     >
                       通过
@@ -127,8 +184,10 @@ export function AdminUserApproval() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleUserActivation(user.id, false)}
-                      disabled={loading}
+                      onClick={() => {
+                        console.log('拒绝按钮点击:', user.id);
+                        handleUserActivation(user.id, false);
+                      }}
                     >
                       拒绝
                     </Button>
