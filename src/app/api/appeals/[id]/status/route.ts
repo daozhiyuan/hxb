@@ -70,8 +70,11 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         data: {
           status,
           remarks,
-          operatorId: Number(session.user.id),
-          processedAt: new Date(),
+          operator: {
+            connect: {
+              id: Number(session.user.id)
+            }
+          }
         },
       });
 

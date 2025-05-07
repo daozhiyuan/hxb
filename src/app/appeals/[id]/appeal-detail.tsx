@@ -30,13 +30,14 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/icons';
+import Link from 'next/link';
 
 interface Appeal {
   id: number;
   customerName: string;
   idNumber: string;
   reason: string;
-  evidence: string[];
+  evidence: string | null;
   status: AppealStatus;
   remarks?: string;
   createdAt: string;
@@ -280,22 +281,36 @@ export default function AppealDetail({ params }: { params: { id: string } }) {
 
                 {/* 证据材料 */}
                 {appeal.evidence && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium">证据材料</h3>
+                  <div className="grid gap-4">
+                    <h3 className="text-lg font-medium">证据材料</h3>
                     <div className="grid gap-2">
-                      {appeal.evidence.split(',').map((file, index) => (
-                        <div key={index} className="flex items-center space-x-2">
-                          <Icons.fileText className="h-4 w-4 text-gray-500" />
-                          <a
+                      {appeal.evidence.split(',').map((file: string, index: number) => {
+                        const fileName = file.split('/').pop() || file;
+                        return (
+                          <Link
+                            key={index}
                             href={file}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline"
+                            className="flex items-center gap-2 text-blue-600 hover:text-blue-800"
                           >
-                            证据文件 {index + 1}
-                          </a>
-                        </div>
-                      ))}
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                              />
+                            </svg>
+                            {fileName}
+                          </Link>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -304,22 +319,26 @@ export default function AppealDetail({ params }: { params: { id: string } }) {
                 <div className="grid gap-4">
                   <h3 className="text-lg font-semibold">处理记录</h3>
                   <div className="space-y-4">
-                    {appeal.logs.map((log) => (
-                      <div
-                        key={log.id}
-                        className="rounded-lg border p-4 text-sm space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{log.operator.name}</span>
-                          <span className="text-gray-500">
-                            {log.createdAt ? format(new Date(log.createdAt), 'yyyy-MM-dd HH:mm:ss', {
-                              locale: zhCN,
-                            }) : '未知时间'}
-                          </span>
+                    {appeal.logs && appeal.logs.length > 0 ? (
+                      appeal.logs.map((log) => (
+                        <div
+                          key={log.id}
+                          className="rounded-lg border p-4 text-sm space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{log.operator.name}</span>
+                            <span className="text-gray-500">
+                              {log.createdAt ? format(new Date(log.createdAt), 'yyyy-MM-dd HH:mm:ss', {
+                                locale: zhCN,
+                              }) : '未知时间'}
+                            </span>
+                          </div>
+                          <p>{log.remarks}</p>
                         </div>
-                        <p>{log.remarks}</p>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-gray-500">暂无处理记录</p>
+                    )}
                   </div>
                 </div>
               </div>
