@@ -1,16 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { 
   Phone, Mail, Building, User, Calendar, FileText, 
   ArrowLeft, Edit, Trash2, Clock, Briefcase, MapPin,
-  Share2, DollarSign, ShieldAlert
+  Share2, DollarSign, ShieldAlert, MessageCircle, AlertTriangle
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FollowUpForm } from '@/components/follow-up-form';
@@ -34,6 +34,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CustomerTags } from '@/components/crm/customer-tags';
 import { Role } from '@prisma/client';
 import { ClientProvider } from '@/components/client-provider';
+import { idCardTypeMap } from '@/config/constants';
 
 interface Customer {
   id: number;
@@ -68,6 +69,7 @@ interface Customer {
     name: string;
     color: string;
   }>;
+  idCardType?: string;
 }
 
 interface EditCustomerFormProps {
@@ -75,9 +77,137 @@ interface EditCustomerFormProps {
   onSuccess: () => void;
 }
 
+// 安全格式化日期的辅助函数
+const formatDateSafe = (dateString: string | null | undefined, formatPattern = 'yyyy-MM-dd'): string => {
+  if (!dateString) return '-';
+  
+  try {
+    const date = new Date(dateString);
+    if (!isValid(date)) return dateString;
+    
+    return format(date, formatPattern, { locale: zhCN });
+  } catch (error) {
+    console.error('日期格式化错误:', error, dateString);
+    return String(dateString);
+  }
+};
+
+// 在合适位置添加身份证显示组件
+const IdNumberDisplay = ({ idNumber }: { idNumber: string }) => {
+  if (!idNumber) return <p>未设置</p>;
+  
+  // 检查是否是标准加密格式 (IV:EncryptedHex) 或 Base64格式
+  const isPotentiallyBase64 = (text: string) => {
+    if (!text || typeof text !== 'string' || text.length < 20) return false;
+    return /^[A-Za-z0-9+/=_-]+$/.test(text) && !text.includes(':');
+  };
+  
+  const isStandardEncryptedFormat = (text: string) => {
+    if (!text || typeof text !== 'string') return false;
+    return text.includes(':') && /^[0-9a-f]+:[0-9a-f]+$/i.test(text);
+  };
+  
+  // 检查是否是身份证掩码格式
+  const isMaskedIDCard = (text: string) => {
+    return /^\d[\d*]+\d$/.test(text) && text.includes('*');
+  };
+  
+  // 检查是否是特殊格式加密数据
+  const isSpecialFormat = (text: string) => {
+    return text.startsWith('tkl1') || text.includes('/9x') || text.length >= 60;
+  };
+  
+  // 显示错误消息
+  if (idNumber.includes('[解密失败') || idNumber.includes('格式错误') || idNumber.includes('解密异常')) {
+    return (
+      <div className="flex flex-col space-y-1">
+        <div className="flex items-center text-red-500">
+          <AlertTriangle className="h-4 w-4 mr-1" />
+          <span>{idNumber}</span>
+        </div>
+        <div className="text-xs mt-1">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="h-6 text-xs"
+            onClick={() => {
+              window.location.href = '/profile';
+            }}
+          >
+            <span className="flex items-center">
+              <ShieldAlert className="h-3 w-3 mr-1" />
+              使用专用证件解密工具
+            </span>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
+  // 处理掩码格式的证件号（部分成功解密）
+  if (isMaskedIDCard(idNumber)) {
+    return (
+      <div className="flex items-center">
+        <div className="font-mono bg-blue-50 px-2 py-1 border border-blue-200 rounded">
+          {idNumber} <span className="text-blue-500 text-xs">(已脱敏)</span>
+        </div>
+        <ShieldAlert className="ml-1 h-4 w-4 text-blue-500" aria-label="超级管理员视图" />
+      </div>
+    );
+  }
+  
+  // 检测可能仍然是加密格式的数据
+  if (isPotentiallyBase64(idNumber) || isStandardEncryptedFormat(idNumber)) {
+    // 检查是否是特定的加密格式
+    const isSpecialEncryption = isSpecialFormat(idNumber);
+    
+    return (
+      <div className="flex flex-col space-y-1">
+        <div className="flex items-center">
+          <div className="font-mono bg-yellow-50 px-2 py-1 border border-yellow-200 rounded text-xs break-all max-w-md">
+            {idNumber}
+          </div>
+          <ShieldAlert className="ml-1 h-4 w-4 text-yellow-500" aria-label="超级管理员视图" />
+        </div>
+        <div className="text-xs text-yellow-600 flex items-center mt-1">
+          <AlertTriangle className="h-3 w-3 mr-1" />
+          {isSpecialEncryption 
+            ? "特殊加密格式，需使用专用解密工具。" 
+            : "警告：数据可能仍是加密格式，未能成功解密。"}
+        </div>
+        <div className="text-xs mt-1 flex space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="h-6 text-xs"
+            onClick={() => {
+              window.location.href = '/profile';
+            }}
+          >
+            <span className="flex items-center">
+              <ShieldAlert className="h-3 w-3 mr-1" />
+              使用专用证件解密工具
+            </span>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
+  // 显示成功解密的证件号码
+  return (
+    <div className="flex items-center">
+      <div className="font-mono bg-green-50 px-2 py-1 border border-green-200 rounded">
+        {idNumber}
+      </div>
+      <ShieldAlert className="ml-1 h-4 w-4 text-green-500" aria-label="超级管理员视图" />
+    </div>
+  );
+};
+
 export default function CustomerDetail({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -85,45 +215,107 @@ export default function CustomerDetail({ params }: { params: { id: string } }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [decryptedIdCardNumber, setDecryptedIdCardNumber] = useState<string>('');
-  const isSuperAdmin = String(session?.user?.role) === 'SUPER_ADMIN';
+  
+  // 避免在渲染期间计算可能导致问题的值
+  const isSuperAdmin = useMemo(() => {
+    return status === 'authenticated' && String(session?.user?.role) === 'SUPER_ADMIN';
+  }, [status, session?.user?.role]);
 
   useEffect(() => {
-    if (params?.id) {
+    // 只有在会话状态已确定且有ID参数时才获取数据
+    if (status !== 'loading' && params?.id) {
+      if (isNaN(Number(params.id))) {
+        console.error('无效的客户ID参数:', params.id);
+        setError('无效的客户ID，请返回客户列表重新选择');
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 0);
+        return;
+      }
+      
       fetchCustomer();
     }
-  }, [params?.id, isSuperAdmin]);
+  }, [params?.id, status, isSuperAdmin]);
 
   const fetchCustomer = async () => {
     if (!params?.id) return;
+    if (isNaN(Number(params.id))) return;
+    if (status === 'loading') return;
     
     setIsLoading(true);
     setError('');
     try {
-      if (isSuperAdmin) {
+      console.log(`正在获取客户ID: ${params.id} 的详情...`);
+      
+      if (status === 'authenticated' && isSuperAdmin) {
+        console.log(`超级管理员权限请求客户详情: ${params.id}`);
         const response = await fetch(`/api/admin/customers/${params.id}`);
         if (!response.ok) {
-          throw new Error('获取客户详情失败');
+          const errorData = await response.json().catch(() => ({}));
+          console.error('获取超级管理员客户详情失败:', errorData);
+          throw new Error(errorData.message || '获取客户详情失败');
         }
         const data = await response.json();
+        console.log('成功获取超级管理员客户详情');
+        console.log(`返回的身份证数据: ${data.decryptedIdCardNumber ? '存在' : '不存在'}`);
+        
+        // 先设置客户数据
         setCustomer(data);
+        
+        // 使用setTimeout延迟设置敏感数据状态，防止在渲染期间更新状态
         if (data.decryptedIdCardNumber) {
-          setDecryptedIdCardNumber(data.decryptedIdCardNumber);
+          console.log(`获取到身份证数据，长度: ${data.decryptedIdCardNumber.length}`);
+          setTimeout(() => {
+            setDecryptedIdCardNumber(data.decryptedIdCardNumber);
+          }, 0);
+        } else {
+          console.log('未获取到身份证数据');
         }
-        setIsLoading(false);
+        
+        // 使用setTimeout延迟设置加载完成状态
+        setTimeout(() => {
+          setIsLoading(false);
+        }, 0);
         return;
       }
       
       const response = await fetch(`/api/crm/customers/${params.id}`);
       if (!response.ok) {
-        throw new Error('获取客户详情失败');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('获取客户详情失败:', errorData);
+        throw new Error(errorData.message || '获取客户详情失败');
       }
       const data = await response.json();
-      setCustomer(data);
+      console.log('成功获取客户详情');
+      
+      // 修复：API返回的格式是 { success: true, data: {...}, timestamp: '...' }
+      // 需要从response.data中获取实际的客户数据
+      if (!data || !data.success) {
+        console.error('客户数据无效:', data);
+        throw new Error('获取的客户数据无效');
+      }
+      
+      // 从返回的数据结构中正确提取customer对象
+      const customerData = data.data;
+      if (!customerData || !customerData.id) {
+        console.error('客户数据结构错误:', data);
+        throw new Error('客户数据结构不正确');
+      }
+      
+      setCustomer(customerData);
+      
+      // 使用setTimeout延迟设置加载状态
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 0);
     } catch (error) {
       console.error('获取客户详情失败:', error);
-      setError('获取客户详情失败，请刷新页面重试');
-    } finally {
-      setIsLoading(false);
+      setError(error instanceof Error ? error.message : '获取客户详情失败，请刷新页面重试');
+      
+      // 使用setTimeout延迟设置加载状态
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 0);
     }
   };
 
@@ -392,44 +584,42 @@ export default function CustomerDetail({ params }: { params: { id: string } }) {
                     
                     {/* 超级管理员身份证号码显示 */}
                     {isSuperAdmin && (
-                      <div className={`flex items-start md:col-span-2 ${decryptedIdCardNumber.includes('解密失败') || decryptedIdCardNumber.includes('格式错误') || decryptedIdCardNumber.includes('无效') ? 'bg-red-50 p-2 rounded' : 'bg-yellow-50 p-2 rounded'}`}>
-                        <ShieldAlert className={`h-5 w-5 mr-2 ${decryptedIdCardNumber.includes('解密失败') || decryptedIdCardNumber.includes('格式错误') || decryptedIdCardNumber.includes('无效') ? 'text-red-500' : 'text-yellow-500'} mt-0.5`} />
-                        <div>
-                          <div className="text-sm text-yellow-700 font-semibold">身份证号码 (仅超级管理员可见)</div>
-                          {decryptedIdCardNumber.includes('解密失败') || decryptedIdCardNumber.includes('格式错误') || decryptedIdCardNumber.includes('无效') ? (
-                            <>
-                              <div className="font-mono text-red-700">{decryptedIdCardNumber}</div>
-                              <div className="text-xs text-red-600 mt-1">
-                                <Link href={`/admin/super-edit/${customer.id}`} className="underline">
-                                  点击这里重新设置身份证号码
-                                </Link>
-                                <button 
-                                  onClick={() => fetchCustomer()} 
-                                  className="underline text-blue-600 ml-3"
-                                  title="刷新数据，检查问题是否已解决"
-                                >
-                                  刷新数据
-                                </button>
-                              </div>
-                            </>
-                          ) : decryptedIdCardNumber.startsWith('0000') ? (
-                            <>
-                              <div className="font-mono text-amber-700">临时占位数据，需要设置实际身份证号码</div>
-                              <div className="text-xs text-amber-600 mt-1">
-                                <Link href={`/admin/super-edit/${customer.id}`} className="underline">
-                                  点击这里设置正确的身份证号码
-                                </Link>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="font-mono text-yellow-900">
-                              {decryptedIdCardNumber || '未设置'}
-                            </div>
-                          )}
+                      <div className="md:col-span-2 mt-2">
+                        <div className="text-sm font-semibold mb-1 flex items-center">
+                          <ShieldAlert className="h-4 w-4 mr-1 text-yellow-500" />
+                          身份证号码 (仅超级管理员可见)
                         </div>
+                        <IdNumberDisplay idNumber={decryptedIdCardNumber} />
+                        {!decryptedIdCardNumber && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                            onClick={() => router.push(`/admin/super-edit/${customer?.id}`)}
+                          >
+                            设置身份证号码
+                          </Button>
+                        )}
+                        {decryptedIdCardNumber && decryptedIdCardNumber.includes('解密失败') && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-2 text-red-500"
+                            onClick={() => router.push(`/admin/super-edit/${customer?.id}`)}
+                          >
+                            重新设置身份证号码
+                          </Button>
+                        )}
                       </div>
                     )}
                     
+                    <div className="flex items-start">
+                      <FileText className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
+                      <div>
+                        <div className="text-sm text-gray-500">证件类型</div>
+                        <div>{customer.idCardType ? idCardTypeMap[customer.idCardType] || customer.idCardType : '-'}</div>
+                      </div>
+                    </div>
                     <div className="flex items-start">
                       <Briefcase className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
                       <div>
@@ -474,7 +664,9 @@ export default function CustomerDetail({ params }: { params: { id: string } }) {
                       <div>
                         <div className="text-sm text-gray-500">登记日期</div>
                         <div>
-                          {format(new Date(customer.registrationDate), 'yyyy-MM-dd', { locale: zhCN })}
+                          {customer.registrationDate ? 
+                            formatDateSafe(customer.registrationDate)
+                            : '-'}
                         </div>
                       </div>
                     </div>
@@ -482,7 +674,16 @@ export default function CustomerDetail({ params }: { params: { id: string } }) {
                       <Share2 className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
                       <div>
                         <div className="text-sm text-gray-500">登记人</div>
-                        <div>{customer.registeredBy.name || customer.registeredBy.email}</div>
+                        <div>{customer.registeredBy?.name || (customer.registeredBy?.email || '未知')}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-start">
+                      <Clock className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
+                      <div>
+                        <div className="text-sm text-gray-500">更新时间</div>
+                        <div>
+                          {formatDateSafe(customer.updatedAt, 'yyyy-MM-dd HH:mm')}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -527,15 +728,40 @@ export default function CustomerDetail({ params }: { params: { id: string } }) {
                     <TabsTrigger value="add">添加跟进</TabsTrigger>
                   </TabsList>
                   <TabsContent value="records" className="p-6 pt-4">
-                    <FollowUpList 
-                      customerId={customer.id}
-                    />
+                    {/* 确保customer存在且有有效ID才渲染FollowUpList */}
+                    {customer && customer.id && !isNaN(Number(customer.id)) ? (
+                      <>
+                        <div className="mb-2 text-xs text-muted-foreground">
+                          客户ID: {customer.id} | 加载状态: {isLoading ? '加载中' : '已加载'}
+                        </div>
+                        {/* 确保传递给FollowUpList的是数字类型的ID */}
+                        <FollowUpList customerId={Number(customer.id)} />
+                      </>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <div className="text-lg font-medium mb-1">无法加载跟进记录</div>
+                        <p className="text-sm">客户信息不完整，无法获取跟进记录</p>
+                        <p className="text-xs mt-2 text-gray-500">
+                          {customer ? `客户ID: ${customer.id || '未知'} (${typeof customer.id})` : '客户对象不存在'}
+                        </p>
+                      </div>
+                    )}
                   </TabsContent>
                   <TabsContent value="add" className="p-6 pt-4">
-                    <FollowUpForm 
-                      customerId={customer.id}
-                      onSuccess={() => fetchCustomer()}
-                    />
+                    {/* 确保customer存在且有有效ID才渲染FollowUpForm */}
+                    {customer && customer.id && !isNaN(Number(customer.id)) ? (
+                      <FollowUpForm 
+                        customerId={Number(customer.id)}
+                        onSuccess={() => fetchCustomer()}
+                      />
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <MessageCircle className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                        <div className="text-lg font-medium mb-1">无法添加跟进记录</div>
+                        <p className="text-sm">客户信息不完整，无法添加跟进记录</p>
+                      </div>
+                    )}
                   </TabsContent>
                 </Tabs>
               </CardContent>
@@ -560,6 +786,7 @@ function EditCustomerForm({ customer, onSuccess }: EditCustomerFormProps) {
     jobTitle: customer.jobTitle || '',
     address: customer.address || '',
     lastYearRevenue: customer.lastYearRevenue?.toString() || '',
+    idCardType: customer.idCardType || 'CHINA_MAINLAND',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -578,7 +805,8 @@ function EditCustomerForm({ customer, onSuccess }: EditCustomerFormProps) {
       ...formData,
       lastYearRevenue: formData.lastYearRevenue 
         ? parseInt(formData.lastYearRevenue, 10) 
-        : null
+        : null,
+      idCardType: formData.idCardType,
     };
 
     try {
@@ -698,6 +926,24 @@ function EditCustomerForm({ customer, onSuccess }: EditCustomerFormProps) {
                 <SelectItem value="SIGNED">已签约</SelectItem>
                 <SelectItem value="COMPLETED">已完成</SelectItem>
                 <SelectItem value="LOST">已流失</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="idCardType" className="text-sm font-medium">证件类型</label>
+            <Select
+              name="idCardType"
+              value={formData.idCardType}
+              onValueChange={(value) => setFormData(prev => ({ ...prev, idCardType: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="选择证件类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CHINA_MAINLAND">中国大陆身份证</SelectItem>
+                <SelectItem value="PASSPORT">护照</SelectItem>
+                <SelectItem value="HONG_KONG_ID">香港身份证</SelectItem>
+                <SelectItem value="FOREIGN_ID">外国证件</SelectItem>
               </SelectContent>
             </Select>
           </div>
