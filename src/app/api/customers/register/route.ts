@@ -7,6 +7,8 @@ import crypto from 'crypto'; // For hashing and encryption
 import { customers_status as CustomerStatus } from '@prisma/client';
 import { safeCreateCustomer, safeFindCustomerByIdCardHash } from '@/lib/prisma-helpers';
 import { CustomerStatusEnum } from '@/config/client-config';
+import { IdCardType, validateIdCard } from '@/lib/client-validation';
+import { encryptIdCard, hashIdCard } from '@/lib/encryption';
 
 // 设置为动态路由
 export const dynamic = 'force-dynamic';
@@ -39,11 +41,12 @@ const registerCustomerSchema = z.object({
   name: z.string().min(1, { message: '客户姓名不能为空' }).trim(),
   companyName: z.union([z.string(), z.null()]).optional().default(null),
   lastYearRevenue: z.union([z.number(), z.null(), z.string().transform(val => val === '' ? null : Number(val))]).optional().default(null),
-  idCardNumber: z.string().regex(/^\d{17}(\d|X)$/i, { message: '无效的身份证号码格式' }).trim(), // Basic validation for 18 digits/X
+  idCardNumber: z.string().min(1, { message: '证件号码不能为空' }).trim(),
+  idCardType: z.string().default(IdCardType.CHINA_MAINLAND),
   phone: z.union([z.string(), z.null()]).optional().default(null),
   address: z.union([z.string(), z.null()]).optional().default(null),
   status: z.enum(validStatuses as [string, ...string[]]).default(CustomerStatusEnum.FOLLOWING),
-  notes: z.union([z.string(), z.null()]).optional().default(null),
+  notes: z.string().min(1, { message: '备注不能为空' }).trim(),
   jobTitle: z.union([z.string(), z.null()]).optional().default(null),
   industry: z.union([z.string(), z.null()]).optional().default(null),
   source: z.union([z.string(), z.null()]).optional().default(null),
@@ -70,125 +73,82 @@ const getEncryptionKey = () => {
   }
 };
 
-// 真实加密函数，使用AES-GCM加密身份证号码
-const encryptIdCard = (idCardNumber: string): string => {
-  try {
-    // 获取加密密钥
-    const key = getEncryptionKey();
-    // 创建随机初始化向量
-    const iv = crypto.randomBytes(IV_LENGTH);
-    // 创建加密器
-    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-    // 加密数据
-    let encrypted = cipher.update(idCardNumber, 'utf8');
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
-    // 获取认证标签
-    const tag = cipher.getAuthTag();
-    // 组合IV、加密数据和认证标签
-    const result = Buffer.concat([iv, encrypted, tag]);
-    // 返回Base64编码的加密结果
-    return result.toString('base64');
-  } catch (error) {
-    console.error('加密身份证号码失败:', error);
-    throw new Error('身份证加密失败，请联系管理员');
-  }
-};
-
-// 哈希函数，使用SHA-256哈希身份证号码
-const hashIdCard = (idCardNumber: string): string => {
-  try {
-    // 创建哈希
-    const hash = crypto.createHash('sha256');
-    hash.update(idCardNumber);
-    
-    // 返回哈希结果的十六进制表示
-    return hash.digest('hex');
-  } catch (error) {
-    console.error('哈希身份证号码失败:', error);
-    // 如果哈希失败，回退到简化版哈希（生产环境应该抛出错误）
-    return `hash_${idCardNumber.substring(idCardNumber.length - 3)}`;
-  }
-};
-
 // --- API Handler ---
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
-
-    // 1. Check Authentication and Authorization
-    if (!session || !session.user) {
-      return NextResponse.json({ message: '未授权访问，请先登录' }, { status: 401 });
+    if (!session) {
+      return NextResponse.json({ error: '未授权访问' }, { status: 401 });
     }
 
-    // 2. Parse and Validate Request Body
-    const body = await request.json();
-    console.log('接收到的客户数据:', body);
-    
-    const validation = registerCustomerSchema.safeParse(body);
+    const data = await request.json();
+    console.log('接收到的客户数据:', data);
 
-    if (!validation.success) {
-      console.error('数据验证失败:', validation.error.format());
-      return NextResponse.json({ message: '请求数据无效', errors: validation.error.format() }, { status: 400 });
+    // 使用Zod schema验证数据
+    const validationResult = registerCustomerSchema.safeParse(data);
+    if (!validationResult.success) {
+      console.error('数据验证失败:', validationResult.error);
+      return NextResponse.json(
+        { error: '数据验证失败', details: validationResult.error.format() },
+        { status: 400 }
+      );
     }
 
-    const { 
-      name, companyName, lastYearRevenue, idCardNumber, phone, address, 
-      status, notes, jobTitle, industry, source, position 
-    } = validation.data;
-    
-    console.log('处理后的客户数据:', validation.data);
+    const validatedData = validationResult.data;
+    console.log('验证后的客户数据:', validatedData);
 
-    // 3. Hash ID Card for duplication check
-    const idCardHash = hashIdCard(idCardNumber);
+    // 加密身份证号
+    const encryptedIdCard = encryptIdCard(validatedData.idCardNumber);
+    const hashedIdCard = hashIdCard(validatedData.idCardNumber);
 
-    // 4. Check for existing customer with the same ID card hash
-    const existingCustomerResult = await safeFindCustomerByIdCardHash(idCardHash);
+    // 检查身份证号是否已存在
+    const existingCustomer = await prisma.customer.findFirst({
+      where: { idCardHash: hashedIdCard }
+    });
 
-    if (existingCustomerResult.success && existingCustomerResult.customer) {
-      // 客户已存在
-      return NextResponse.json({ message: '冲突：该客户已被其他合作伙伴报备' }, { status: 409 }); // 409 Conflict
+    if (existingCustomer) {
+      return NextResponse.json(
+        { error: '该证件号码已被报备，如有异议请提交申诉' },
+        { status: 409 }
+      );
     }
 
-    // 5. Encrypt ID Card for storage
-    const encryptedIdCard = encryptIdCard(idCardNumber);
-
-    // 6. Create Customer Record in Database using safe helper
-    try {
-      const result = await safeCreateCustomer({
-        name,
-        companyName,
-        lastYearRevenue,
+    // 创建客户记录
+    const customer = await prisma.customer.create({
+      data: {
+        name: validatedData.name,
         idCardNumberEncrypted: encryptedIdCard,
-        idCardHash,
-        phone,
-        address,
-        status,
-        notes,
-        jobTitle,
-        industry,
-        source,
-        position,
-        registeredByPartnerId: Number(session.user.id)
-      });
-
-      if (!result.success) {
-        throw result.error;
+        idCardHash: hashedIdCard,
+        notes: validatedData.notes,
+        companyName: validatedData.companyName,
+        lastYearRevenue: validatedData.lastYearRevenue,
+        phone: validatedData.phone,
+        address: validatedData.address,
+        status: validatedData.status,
+        jobTitle: validatedData.jobTitle,
+        industry: validatedData.industry,
+        source: validatedData.source,
+        position: validatedData.position,
+        idCardType: validatedData.idCardType,
+        registeredBy: {
+          connect: {
+            id: session.user.id
+          }
+        }
       }
+    });
 
-      // 确保customer存在
-      if (!result.customer) {
-        throw new Error('创建客户记录失败：系统未返回客户ID');
-      }
-
-    // 7. Return Success Response
-      return NextResponse.json({ message: '客户报备成功', customerId: result.customer.id }, { status: 201 }); // 201 Created
-    } catch (error) {
-      console.error('创建客户记录失败:', error);
-      return NextResponse.json({ message: '创建客户记录失败，请联系管理员' }, { status: 500 });
-    }
-
-  } catch (error: any) {
-    console.error('客户报备 API 出错:', error);
-    return NextResponse.json({ message: '服务器内部错误' }, { status: 500 });
+    console.log('成功创建客户记录:', customer);
+    return NextResponse.json({ success: true, data: customer });
+  } catch (error) {
+    console.error('注册客户失败:', error);
+    // 返回更详细的错误信息
+    return NextResponse.json(
+      { 
+        error: '注册客户失败',
+        details: error instanceof Error ? error.message : '未知错误'
+      },
+      { status: 500 }
+    );
   }
 }

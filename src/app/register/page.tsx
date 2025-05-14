@@ -36,6 +36,9 @@ const formSchema = z.object({
 
 type RegisterFormValues = z.infer<typeof formSchema>;
 
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic';
+
 export default function RegisterPage() {
   const router = useRouter();
   const { toast } = useToast();

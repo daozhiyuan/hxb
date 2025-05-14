@@ -9,6 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Role } from '@prisma/client';
 import { isAdmin } from '@/lib/auth-helpers';
 
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic';
+
 export default function AdminUsersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();

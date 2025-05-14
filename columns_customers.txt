@@ -1,0 +1,26 @@
+Field	Type	Null	Key	Default	Extra
+id	int	NO	PRI	NULL	auto_increment
+name	varchar(191)	NO		NULL	
+companyName	varchar(191)	YES		NULL	
+phone	varchar(191)	YES		NULL	
+email	varchar(191)	YES		NULL	
+status	enum('FOLLOWING','NEGOTIATING','PENDING','SIGNED','COMPLETED','LOST')	NO		NULL	
+notes	varchar(191)	YES		NULL	
+registrationDate	datetime(3)	NO		CURRENT_TIMESTAMP(3)	DEFAULT_GENERATED
+updatedAt	datetime(3)	NO		NULL	
+jobTitle	varchar(191)	YES		NULL	
+registeredByPartnerId	int	NO	MUL	NULL	
+address	varchar(191)	YES		NULL	
+idCardHash	varchar(191)	YES	UNI	NULL	
+idCardNumberEncrypted	text	YES		NULL	
+lastYearRevenue	double	YES		NULL	
+followUpStatus	varchar(50)	YES		NULL	
+industry	varchar(100)	YES		NULL	
+lastContactedAt	datetime(3)	YES		NULL	
+lastFollowUpAt	datetime(3)	YES		NULL	
+logs	json	YES		NULL	
+nextFollowUpAt	datetime(3)	YES		NULL	
+position	varchar(100)	YES		NULL	
+priority	varchar(20)	YES		NULL	
+source	varchar(50)	YES		NULL	
+idCardType	varchar(191)	YES		CHINA_MAINLAND	

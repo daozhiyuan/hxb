@@ -1,7 +1,0 @@
-import NextAuth from 'next-auth';
-import { authOptions } from '@/lib/auth';
-
-// 确保NextAuth能访问到正确的环境变量
-const handler = NextAuth(authOptions);
-
-export { handler as GET, handler as POST }; 

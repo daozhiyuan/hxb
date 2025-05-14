@@ -3,6 +3,55 @@ import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { Role } from '@prisma/client';
 
+// 内存存储最近的请求（生产环境应使用Redis等分布式存储）
+const ipRequestMap = new Map<string, { count: number; timestamp: number }>();
+
+// 清理过期记录的间隔（毫秒）
+const CLEANUP_INTERVAL = 60 * 1000; // 1分钟
+
+// 速率限制配置
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1分钟窗口
+const API_RATE_LIMIT = 60; // API路由每分钟最大请求数
+const HEALTH_RATE_LIMIT = 30; // 健康检查每分钟最大请求数
+
+// 定期清理过期的速率限制记录
+if (typeof global !== 'undefined') {
+  const cleanup = () => {
+    const now = Date.now();
+    for (const [ip, data] of ipRequestMap.entries()) {
+      if (now - data.timestamp > RATE_LIMIT_WINDOW) {
+        ipRequestMap.delete(ip);
+      }
+    }
+  };
+  
+  // 启动清理任务
+  setInterval(cleanup, CLEANUP_INTERVAL);
+}
+
+/**
+ * 检查IP是否超出速率限制
+ * @param ip 客户端IP
+ * @param limit 允许的最大请求数
+ * @returns 是否超出限制
+ */
+function isRateLimited(ip: string, limit: number): boolean {
+  const now = Date.now();
+  const requestData = ipRequestMap.get(ip);
+  
+  if (!requestData || now - requestData.timestamp > RATE_LIMIT_WINDOW) {
+    // 新窗口期，重置计数
+    ipRequestMap.set(ip, { count: 1, timestamp: now });
+    return false;
+  }
+  
+  // 更新计数
+  requestData.count += 1;
+  
+  // 检查是否超出限制
+  return requestData.count > limit;
+}
+
 // 此中间件用于处理认证和动态 API 路由
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,6 +74,40 @@ export async function middleware(request: NextRequest) {
       pathname.endsWith('.jpg') ||
       pathname.endsWith('.jpeg') ||
       pathname.endsWith('.ico')) {
+    // 获取客户端IP
+    const ip = request.ip || 
+      request.headers.get('x-forwarded-for') || 
+      request.headers.get('x-real-ip') || 
+      '127.0.0.1';
+    
+    // 仅限制API路由
+    if (pathname.startsWith('/api/')) {
+      // 健康检查路由使用不同的限制配置
+      const limit = pathname === '/api/health' ? HEALTH_RATE_LIMIT : API_RATE_LIMIT;
+      
+      if (isRateLimited(ip, limit)) {
+        // 返回429状态码表示请求过多
+        return new NextResponse(
+          JSON.stringify({
+            success: false,
+            error: { 
+              message: '请求过于频繁，请稍后再试',
+              code: 'RATE_LIMITED'  
+            },
+            timestamp: new Date().toISOString()
+          }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'Retry-After': '60',
+              'X-RateLimit-Limit': limit.toString(),
+              'X-RateLimit-Reset': new Date(Date.now() + RATE_LIMIT_WINDOW).toISOString()
+            }
+          }
+        );
+      }
+    }
     return NextResponse.next();
   }
 
@@ -63,9 +146,10 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
+// 中间件配置，只对API请求和页面请求应用
 export const config = {
   matcher: [
-    // 跳过静态文件和公共资产
-    '/((?!_next/static|_next/image|favicon.ico|images|public).*)',
+    '/api/:path*',
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }; 

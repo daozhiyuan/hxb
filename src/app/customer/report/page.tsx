@@ -11,11 +11,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { API_BASE_URL, CustomerStatusEnum } from '@/config/client-config';
 import { useRouter } from 'next/navigation'; // 导入路由钩子
+import { IdCardType } from '@/lib/client-validation';
 // 不要在客户端组件中直接导入Prisma模型
 // import { CustomerStatus } from '@prisma/client';
 
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic';
+
 export default function CustomerReportPage() {
   const [idNumber, setIdNumber] = useState('');
+  const [idCardType, setIdCardType] = useState<IdCardType>(IdCardType.CHINA_MAINLAND);
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [lastYearRevenue, setLastYearRevenue] = useState('');
@@ -37,11 +42,31 @@ export default function CustomerReportPage() {
     setCustomerStatus(value);
   };
 
+  const handleIdCardTypeChange = (value: string) => {
+    setIdCardType(value as IdCardType);
+  };
+
+  // 获取证件类型提示信息
+  const getIdCardPlaceholder = () => {
+    switch (idCardType) {
+      case IdCardType.CHINA_MAINLAND:
+        return '请输入18位身份证号码';
+      case IdCardType.PASSPORT:
+        return '请输入护照号码，例如：E12345678';
+      case IdCardType.HONG_KONG_ID:
+        return '请输入香港身份证号码，例如：A123456(7)';
+      case IdCardType.FOREIGN_ID:
+        return '请输入证件号码';
+      default:
+        return '请输入证件号码';
+    }
+  };
+
   const handleCheckDuplication = async () => {
-    if (!idNumber) {
+    if (!idNumber.trim()) {
        toast({
-        title: '请输入身份证号码',
-        description: '需要身份证号码才能进行查重。',
+        title: '请输入证件号码',
+        description: '需要证件号码才能进行查重。',
         variant: 'destructive',
       });
       return;
@@ -51,7 +76,7 @@ export default function CustomerReportPage() {
 
     try {
       // 使用相对路径而非绝对URL
-      const response = await fetch(`/api/customers/check-duplicate?idNumber=${encodeURIComponent(idNumber)}`, {
+      const response = await fetch(`/api/customers/check-duplicate?idNumber=${encodeURIComponent(idNumber)}&idCardType=${encodeURIComponent(idCardType)}`, {
         method: 'GET',
       });
       
@@ -86,11 +111,11 @@ export default function CustomerReportPage() {
     event.preventDefault();
     setSubmitting(true);
   
-    // 验证必填字段
-    if (!name || !idNumber || !phone || !address) {
+    // 验证必填字段（仅保留证件号码、姓名和备注为必填项）
+    if (!name || !idNumber || !notes) {
       toast({
         title: '表单不完整',
-        description: '请填写所有必填字段（姓名、身份证号码、电话号码和联系地址）。',
+        description: '请填写所有必填字段（姓名、证件号码和备注）。',
         variant: 'destructive',
       });
       setSubmitting(false);
@@ -120,6 +145,7 @@ export default function CustomerReportPage() {
     const customerData = {
       name,
       idCardNumber: idNumber,
+      idCardType: idCardType,
       companyName: companyName || null,
       lastYearRevenue: lastYearRevenue ? parseFloat(lastYearRevenue) : null,
       phone: phone || null,
@@ -182,6 +208,7 @@ export default function CustomerReportPage() {
   // 在清除表单时也使用客户端枚举
   const clearForm = () => {
     setIdNumber('');
+    setIdCardType(IdCardType.CHINA_MAINLAND);
     setName('');
     setCompanyName('');
     setLastYearRevenue('');
@@ -214,11 +241,26 @@ export default function CustomerReportPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* 基本信息字段 - 必填项 */}
             <div>
-              <Label htmlFor="idNumber">身份证号码 <span className="text-red-500">*</span></Label>
+              <Label htmlFor="idCardType">证件类型 <span className="text-red-500">*</span></Label>
+              <Select onValueChange={handleIdCardTypeChange} defaultValue={idCardType}>
+                <SelectTrigger id="idCardType" className="w-full">
+                  <SelectValue placeholder="选择证件类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={IdCardType.CHINA_MAINLAND}>中国大陆身份证</SelectItem>
+                  <SelectItem value={IdCardType.PASSPORT}>护照</SelectItem>
+                  <SelectItem value={IdCardType.HONG_KONG_ID}>香港身份证</SelectItem>
+                  <SelectItem value={IdCardType.FOREIGN_ID}>其他证件</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="idNumber">证件号码 <span className="text-red-500">*</span></Label>
               <Input
                 type="text"
                 id="idNumber"
-                placeholder="请输入身份证号码 (用于查重和注册)"
+                placeholder={getIdCardPlaceholder()}
                 value={idNumber}
                 onChange={e => setIdNumber(e.target.value)}
                 required
@@ -238,26 +280,22 @@ export default function CustomerReportPage() {
               />
             </div>
             <div>
-              <Label htmlFor="phone">电话号码 <span className="text-red-500">*</span></Label>
+              <Label htmlFor="phone">电话号码</Label>
               <Input
                 type="tel"
                 id="phone"
                 placeholder="请输入电话号码"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                required
-                aria-required="true"
               />
             </div>
             <div>
-              <Label htmlFor="address">联系地址 <span className="text-red-500">*</span></Label>
+              <Label htmlFor="address">联系地址</Label>
               <Textarea
                 id="address"
                 placeholder="请输入联系地址"
                 value={address}
                 onChange={e => setAddress(e.target.value)}
-                required
-                aria-required="true"
               />
             </div>
             
@@ -314,19 +352,21 @@ export default function CustomerReportPage() {
               />
             </div>
             <div>
-              <Label htmlFor="notes">备注</Label>
+              <Label htmlFor="notes">备注 <span className="text-red-500">*</span></Label>
               <Textarea
                 id="notes"
                 placeholder="请输入客户备注"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
+                required
+                aria-required="true"
               />
             </div>
             
             <div>
-                <Label>客户状态 <span className="text-red-500">*</span></Label>
+                <Label htmlFor="customerStatus">客户状态</Label>
                 <Select onValueChange={handleCustomerStatusChange} defaultValue={customerStatus}>
-                    <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectTrigger id="customerStatus" className="w-full md:w-[180px]">
                         <SelectValue placeholder="选择状态" />
                     </SelectTrigger>
                     <SelectContent>

@@ -1,49 +1,53 @@
 'use client';
 
 import * as React from 'react';
-import { ThemeProvider as NextThemesProvider, type ThemeProviderProps } from 'next-themes';
 import { SessionProvider } from 'next-auth/react';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { ThemeProvider } from 'next-themes';
+import { SidebarProvider } from '@/providers/sidebar-provider';
+import { UIProvider } from '@/contexts/ui-context';
+import { Toaster } from '@/components/ui/toaster';
 
-// 创建一个组件用于处理全局预加载和路由行为
+// 路由变更时的处理函数
 function RouteHandler() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    // 清除所有无效的预加载请求
-    const originalFetch = window.fetch;
-    window.fetch = function(input, init) {
-      // 如果是RSC请求，并且URL中包含_rsc参数
-      if (typeof input === 'string' && input.includes('_rsc=')) {
-        // 检查是否为预加载请求
-        if (init?.signal?.aborted) {
-          return Promise.reject(new DOMException('Aborted', 'AbortError'));
-        }
-      }
-      return originalFetch(input, init);
-    };
-
-    return () => {
-      window.fetch = originalFetch;
-    };
-  }, [pathname, searchParams]);
-
   return null;
 }
 
-export function Providers({ children, ...props }: ThemeProviderProps) {
+interface ProvidersProps {
+  children: React.ReactNode;
+  session?: any;
+  attribute?: 'class' | 'data-theme';
+  defaultTheme?: string;
+  enableSystem?: boolean;
+}
+
+// 应用的全局提供者组件
+export function Providers({
+  children,
+  session,
+  attribute = 'class',
+  defaultTheme = 'system',
+  enableSystem = true,
+}: ProvidersProps) {
   return (
-    <SessionProvider>
-      <NextThemesProvider {...props}>
-        <RouteHandler />
-        {children}
-      </NextThemesProvider>
+    <SessionProvider session={session} refetchInterval={5 * 60} refetchWhenOffline={false}>
+      <UIProvider>
+        <ThemeProvider 
+          attribute={attribute} 
+          defaultTheme={defaultTheme} 
+          enableSystem={enableSystem}
+        >
+          <SidebarProvider defaultOpen={true}>
+            <RouteHandler />
+            {children}
+            <Toaster />
+          </SidebarProvider>
+        </ThemeProvider>
+      </UIProvider>
     </SessionProvider>
   );
 }
 
+// 简化的认证提供者
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <SessionProvider>{children}</SessionProvider>;
 }

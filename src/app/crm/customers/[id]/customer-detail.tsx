@@ -93,8 +93,10 @@ const formatDateSafe = (dateString: string | null | undefined, formatPattern = '
 };
 
 // 在合适位置添加身份证显示组件
-const IdNumberDisplay = ({ idNumber }: { idNumber: string }) => {
-  if (!idNumber) return <p>未设置</p>;
+const IdNumberDisplay = ({ idNumber, decryptedIdCardNumber }: { idNumber: string, decryptedIdCardNumber?: string }) => {
+  // 优先展示解密后的明文或[解密失败]
+  const displayValue = decryptedIdCardNumber || idNumber;
+  if (!displayValue) return <p>未设置</p>;
   
   // 检查是否是标准加密格式 (IV:EncryptedHex) 或 Base64格式
   const isPotentiallyBase64 = (text: string) => {
@@ -118,12 +120,12 @@ const IdNumberDisplay = ({ idNumber }: { idNumber: string }) => {
   };
   
   // 显示错误消息
-  if (idNumber.includes('[解密失败') || idNumber.includes('格式错误') || idNumber.includes('解密异常')) {
+  if (displayValue.includes('[解密失败') || displayValue.includes('格式错误') || displayValue.includes('解密异常')) {
     return (
       <div className="flex flex-col space-y-1">
         <div className="flex items-center text-red-500">
           <AlertTriangle className="h-4 w-4 mr-1" />
-          <span>{idNumber}</span>
+          <span>{displayValue}</span>
         </div>
         <div className="text-xs mt-1">
           <Button 
@@ -145,11 +147,11 @@ const IdNumberDisplay = ({ idNumber }: { idNumber: string }) => {
   }
   
   // 处理掩码格式的证件号（部分成功解密）
-  if (isMaskedIDCard(idNumber)) {
+  if (isMaskedIDCard(displayValue)) {
     return (
       <div className="flex items-center">
         <div className="font-mono bg-blue-50 px-2 py-1 border border-blue-200 rounded">
-          {idNumber} <span className="text-blue-500 text-xs">(已脱敏)</span>
+          {displayValue} <span className="text-blue-500 text-xs">(已脱敏)</span>
         </div>
         <ShieldAlert className="ml-1 h-4 w-4 text-blue-500" aria-label="超级管理员视图" />
       </div>
@@ -157,15 +159,15 @@ const IdNumberDisplay = ({ idNumber }: { idNumber: string }) => {
   }
   
   // 检测可能仍然是加密格式的数据
-  if (isPotentiallyBase64(idNumber) || isStandardEncryptedFormat(idNumber)) {
+  if (isPotentiallyBase64(displayValue) || isStandardEncryptedFormat(displayValue)) {
     // 检查是否是特定的加密格式
-    const isSpecialEncryption = isSpecialFormat(idNumber);
+    const isSpecialEncryption = isSpecialFormat(displayValue);
     
     return (
       <div className="flex flex-col space-y-1">
         <div className="flex items-center">
           <div className="font-mono bg-yellow-50 px-2 py-1 border border-yellow-200 rounded text-xs break-all max-w-md">
-            {idNumber}
+            {displayValue}
           </div>
           <ShieldAlert className="ml-1 h-4 w-4 text-yellow-500" aria-label="超级管理员视图" />
         </div>
@@ -198,7 +200,7 @@ const IdNumberDisplay = ({ idNumber }: { idNumber: string }) => {
   return (
     <div className="flex items-center">
       <div className="font-mono bg-green-50 px-2 py-1 border border-green-200 rounded">
-        {idNumber}
+        {displayValue}
       </div>
       <ShieldAlert className="ml-1 h-4 w-4 text-green-500" aria-label="超级管理员视图" />
     </div>
@@ -589,7 +591,7 @@ export default function CustomerDetail({ params }: { params: { id: string } }) {
                           <ShieldAlert className="h-4 w-4 mr-1 text-yellow-500" />
                           身份证号码 (仅超级管理员可见)
                         </div>
-                        <IdNumberDisplay idNumber={decryptedIdCardNumber} />
+                        <IdNumberDisplay idNumber={customer.idCardNumberEncrypted} decryptedIdCardNumber={decryptedIdCardNumber} />
                         {!decryptedIdCardNumber && (
                           <Button
                             variant="outline"

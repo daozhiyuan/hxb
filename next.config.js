@@ -3,7 +3,7 @@ const nextConfig = {
   // 修改为服务端渲染模式，不进行静态页面生成
   output: 'standalone',
   
-  // 修改headers配置，移除不支持的browsing-topics
+  // 修改headers配置，删除不支持的browsing-topics
   async headers() {
     return [
       {
@@ -20,6 +20,10 @@ const nextConfig = {
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block'
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()'
           }
         ]
       }
@@ -64,15 +68,12 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   
-  // 禁用静态生成
+  // 禁用静态生成超时限制
   staticPageGenerationTimeout: 0,
   distDir: '.next',
-  
-  // 禁用预渲染
-  exportPathMap: null,
   
   // 外部包配置
   transpilePackages: ["@next/font", "next-auth"],
 }
 
-module.exports = nextConfig
+export default nextConfig

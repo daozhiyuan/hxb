@@ -3,10 +3,13 @@
  * 用于生成一个强力的64位加密密钥，并提供将其设置到.env文件的功能
  */
 
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const readline = require('readline');
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 生成一个强力的随机密钥（64位 = 32字节 = 256位）
 function generateEncryptionKey() {
@@ -59,39 +62,15 @@ function updateEnvFile(keyBase64) {
   }
 }
 
-// 主函数
-async function main() {
-  console.log('加密密钥生成工具');
-  console.log('---------------------------------------------');
-  
-  // 生成新密钥
-  const key = generateEncryptionKey();
-  
-  console.log('\n生成的密钥信息:');
-  console.log(`Base64格式: ${key.base64}`);
-  console.log(`Hex格式: ${key.hex}`);
-  console.log(`长度: ${key.buffer.length} 字节`);
-  
-  // 创建readline接口
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-  
-  // 询问是否更新.env文件
-  rl.question('\n是否要更新.env文件中的ENCRYPTION_KEY？(y/n) ', (answer) => {
-    if (answer.toLowerCase() === 'y') {
-      updateEnvFile(key.base64);
-      console.log('\n警告: 如果您已经有加密数据使用旧密钥，更换密钥将导致无法解密这些数据！');
-      console.log('请确保备份原始密钥或重新加密所有数据！');
-    } else {
-      console.log('\n未更新.env文件，如需手动更新，请将以下行添加到.env文件:');
-      console.log(`ENCRYPTION_KEY=${key.base64}`);
-    }
-    
-    rl.close();
-  });
-}
+// 生成密钥
+const key = generateEncryptionKey();
 
-// 执行主函数
-main();
+// 输出密钥信息
+console.log('生成的加密密钥信息：');
+console.log('Base64格式（推荐使用）：', key.base64);
+console.log('Hex格式（参考）：', key.hex);
+console.log('密钥长度：', key.buffer.length, '字节');
+
+// 提示用户
+console.log('\n请将Base64格式的密钥添加到环境变量中：');
+console.log('ENCRYPTION_KEY=' + key.base64);

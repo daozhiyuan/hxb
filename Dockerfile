@@ -57,7 +57,7 @@ EXPOSE 3005
 
 # 添加健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget --spider http://localhost:3005/api/health || exit 1
+  CMD wget --spider http://localhost:3005 || exit 1
 
 # Start the application with the entry point script
 ENTRYPOINT ["./docker-entrypoint.sh"] 

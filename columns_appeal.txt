@@ -1,0 +1,16 @@
+Field	Type	Null	Key	Default	Extra
+id	int	NO	PRI	NULL	auto_increment
+customerName	varchar(191)	NO		NULL	
+idNumber	text	YES		NULL	
+idNumberHash	varchar(191)	NO		NULL	
+reason	varchar(191)	NO		NULL	
+evidence	varchar(191)	YES		NULL	
+status	enum('pending','processing','approved','rejected')	NO	MUL	pending	
+partnerId	int	NO	MUL	NULL	
+operatorId	int	YES	MUL	NULL	
+createdAt	datetime(3)	NO		CURRENT_TIMESTAMP(3)	DEFAULT_GENERATED
+updatedAt	datetime(3)	NO		NULL	
+previousAppealId	int	YES	MUL	NULL	
+remarks	varchar(191)	YES		NULL	
+adminComment	varchar(191)	YES		NULL	
+idCardType	varchar(191)	NO		CHINA_MAINLAND	

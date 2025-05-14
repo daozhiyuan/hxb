@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { ClientProvider } from '@/components/client-provider';
 import { Role } from '@prisma/client';
 
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic';
+
 export default function CrmPage() {
   const { data: session } = useSession();
 

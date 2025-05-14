@@ -14,6 +14,7 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
@@ -27,6 +28,9 @@ yarn-error.log*
 # local env files
 .env
 .env*.local
+.env.development
+.env.production
+.env.backup
 
 # vercel
 .vercel
@@ -35,18 +39,27 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# IDE
+.idea
+.vscode
+
+# logs
+logs/
+*.log
+
 # uploads
-/uploads/*
-!/uploads/.gitkeep
+public/uploads/
 
 # backups
-/backups/*
-!/backups/.gitkeep
+backups/
+*.sql
+*.tar.gz
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
+# data
+data/
+
+# temp files
+*.bak
+*.save
 
 .genkit/*

@@ -1,195 +1,201 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react'; // Added useCallback
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from 'react';
+import { 
+  Table, 
+  TableBody, 
+  TableCaption, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { CheckCircle, UserPlus, XCircle, Eye } from 'lucide-react';
 import { format } from 'date-fns';
-import { Skeleton } from "@/components/ui/skeleton";
+import { zhCN } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-interface Partner {
-  id: number;
-  name: string | null;
-  email: string;
-  isActive: boolean;
-  createdAt: string; // ISO string initially
-}
+export function AdminPartnerList() {
+  const router = useRouter();
+  const [partners, setPartners] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  });
 
-// Add props to accept a trigger for refreshing
-interface AdminPartnerListProps {
-   refreshTrigger?: number; // A number that changes to trigger refresh
-}
-
-export function AdminPartnerList({ refreshTrigger = 0 }: AdminPartnerListProps) {
-  const [partners, setPartners] = useState<Partner[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-
-  // Wrap fetchPartners in useCallback
-  const fetchPartners = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    console.log("Fetching partners..."); // Add log for debugging refresh
-    
-    let retryCount = 0;
-    const maxRetries = 3;
-    
-    const attemptFetch = async (): Promise<Partner[]> => {
-      try {
-        const response = await fetch('/api/admin/partners', {
-          headers: {
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache'
-          }
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || `获取合作伙伴列表失败 (HTTP ${response.status})`);
-        }
-        
-        const data: Partner[] = await response.json();
-        if (!Array.isArray(data)) {
-          throw new Error('服务器返回的数据格式不正确');
-        }
-        
-        return data;
-      } catch (err: any) {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          console.log(`重试获取合作伙伴列表 (${retryCount}/${maxRetries})...`);
-          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // 递增延迟
-          return attemptFetch();
-        }
-        throw err;
-      }
-    };
-    
+  // 加载合作伙伴列表
+  const fetchPartners = async (page = 1, searchTerm = '') => {
+    setLoading(true);
     try {
-      const data = await attemptFetch();
-      setPartners(data);
-    } catch (err: any) {
-      console.error("获取合作伙伴列表失败 (Admin):", err);
-      setError(err.message || '无法加载合作伙伴数据');
-      toast({
-        title: "加载错误",
-        description: err.message || '无法加载合作伙伴数据，请稍后重试。',
-        variant: "destructive",
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: pagination.limit.toString(),
       });
-    } finally {
-      setIsLoading(false);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast]); // Keep dependencies minimal for useCallback, toast is likely stable
-
-  // Fetch partners on component mount and when refreshTrigger changes
-  useEffect(() => {
-    fetchPartners();
-  }, [fetchPartners, refreshTrigger]); // Add refreshTrigger to dependency array
-
-  // Function to handle status change
-  const handleStatusChange = async (partnerId: number, currentStatus: boolean) => {
-    const newStatus = !currentStatus;
-    // 先乐观更新UI
-    setPartners(prevPartners =>
-      prevPartners.map(p => p.id === partnerId ? { ...p, isActive: newStatus } : p)
-    );
-  
-    try {
-      const response = await fetch(`/api/admin/partners/${partnerId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ isActive: newStatus }),
-      });
-  
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || '更新状态失败');
+      
+      if (searchTerm) {
+        queryParams.append('search', searchTerm);
       }
       
-      // 成功提示
-      toast({
-        title: "更新成功",
-        description: `合作伙伴状态已${newStatus ? '启用' : '禁用'}。`,
-      });
-    } catch (err: any) {
-      console.error("更新合作伙伴状态失败:", err);
-      toast({
-        title: "更新失败",
-        description: err.message || '无法更新合作伙伴状态，请稍后重试。',
-        variant: "destructive",
-      });
-      // 发生错误时恢复原状态
-      setPartners(prevPartners =>
-        prevPartners.map(p => p.id === partnerId ? { ...p, isActive: currentStatus } : p)
-      );
+      const response = await fetch(`/api/admin/partners?${queryParams}`);
+      if (!response.ok) {
+        throw new Error('获取合作伙伴列表失败');
+      }
+      
+      const data = await response.json();
+      setPartners(data.partners);
+      setPagination(data.pagination);
+    } catch (error) {
+      console.error('获取合作伙伴列表失败:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const renderSkeleton = () => (
-    [...Array(3)].map((_, index) => (
-      <TableRow key={`skeleton-partner-${index}`}>
-        <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
-        <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
-        <TableCell><Skeleton className="h-4 w-[120px]" /></TableCell>
-        <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-      </TableRow>
-    ))
-  );
+  useEffect(() => {
+    fetchPartners(pagination.page, search);
+  }, [pagination.page]);
+
+  // 点击创建新合作伙伴按钮
+  const handleCreatePartner = () => {
+    // TODO: 实现创建合作伙伴的功能
+    console.log('点击了创建合作伙伴按钮');
+  };
+
+  // 点击查看详情按钮
+  const handleViewDetails = (partnerId: number) => {
+    router.push(`/admin/users/${partnerId}`);
+  };
+
+  // 处理搜索
+  const handleSearch = () => {
+    fetchPartners(1, search);
+  };
+
+  // 处理翻页
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > pagination.totalPages) return;
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  // 格式化创建时间
+  const formatDate = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), 'yyyy-MM-dd', { locale: zhCN });
+    } catch {
+      return '';
+    }
+  };
 
   return (
-    <div className="mt-6">
-      <h3 className="text-lg font-medium mb-4">合作伙伴账号管理</h3>
-      {error && <p className="text-red-600">加载失败: {error}</p>}
-      <Table>
-        <TableCaption>管理合作伙伴账号状态</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>名称</TableHead>
-            <TableHead>邮箱</TableHead>
-            <TableHead>注册日期</TableHead>
-            <TableHead>状态 (启用/禁用)</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isLoading ? (
-            renderSkeleton()
-          ) : partners.length > 0 ? (
-            partners.map((partner) => (
-              <TableRow key={partner.id}>
-                <TableCell className="font-medium">{partner.name || 'N/A'}</TableCell>
-                <TableCell>{partner.email}</TableCell>
-                <TableCell>{format(new Date(partner.createdAt), 'yyyy-MM-dd')}</TableCell>
-                <TableCell>
-                  <Switch
-                    checked={partner.isActive}
-                    onCheckedChange={() => handleStatusChange(partner.id, partner.isActive)}
-                    aria-label={partner.isActive ? '禁用该伙伴' : '启用该伙伴'}
-                  />
-                   <span className="ml-2 text-sm text-muted-foreground">
-                    {partner.isActive ? '已启用' : '已禁用'}
-                   </span>
-                </TableCell>
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={4} className="text-center">系统中还没有任何合作伙伴账号。</TableCell>
-            </TableRow>
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">合作伙伴管理</h2>
+        <Button onClick={handleCreatePartner}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          添加合作伙伴
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-2 mb-4">
+        <Input
+          placeholder="搜索合作伙伴..."
+          className="max-w-xs"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+        />
+        <Button onClick={handleSearch} variant="outline">搜索</Button>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-10">加载中...</div>
+      ) : partners.length === 0 ? (
+        <div className="text-center py-10">暂无合作伙伴数据</div>
+      ) : (
+        <>
+          <div className="rounded-md border overflow-hidden">
+            <Table>
+              <TableCaption>合作伙伴列表</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">ID</TableHead>
+                  <TableHead>姓名</TableHead>
+                  <TableHead>邮箱</TableHead>
+                  <TableHead>公司名称</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>客户数量</TableHead>
+                  <TableHead>创建时间</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {partners.map((partner) => (
+                  <TableRow key={partner.id}>
+                    <TableCell className="font-medium">{partner.id}</TableCell>
+                    <TableCell>{partner.name || '未设置'}</TableCell>
+                    <TableCell>{partner.email}</TableCell>
+                    <TableCell>{partner.companyName || '未设置'}</TableCell>
+                    <TableCell>
+                      {partner.isActive ? (
+                        <span className="inline-flex items-center text-green-600">
+                          <CheckCircle className="mr-1 h-4 w-4" /> 已激活
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center text-red-600">
+                          <XCircle className="mr-1 h-4 w-4" /> 未激活
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>{partner._count?.customers || 0}</TableCell>
+                    <TableCell>{formatDate(partner.createdAt)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewDetails(partner.id)}
+                      >
+                        <Eye className="mr-1 h-4 w-4" /> 详情
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* 分页控件 */}
+          {pagination.totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+              >
+                上一页
+              </Button>
+              <span>
+                {pagination.page} / {pagination.totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.totalPages}
+              >
+                下一页
+              </Button>
+            </div>
           )}
-        </TableBody>
-      </Table>
+        </>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -28,6 +28,8 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { AdminCustomerDetailDialog } from './admin-customer-detail-dialog'; // Import the detail dialog
+import { useSession } from 'next-auth/react';
+import { isSuperAdmin } from '@/lib/auth-helpers';
 
 import { ChevronLeft, ChevronRight, Search, CheckCircle, XCircle, CircleDot, Eye } from 'lucide-react'; // Import Eye icon
 
@@ -41,7 +43,7 @@ interface Customer {
   updatedAt: string;
 }
 
-interface AdminCustomer { id: number; name: string; companyName: string | null; lastYearRevenue: number | null; phone: string | null; address: string | null; status: string; notes: string | null; registrationDate: string; updatedAt: string; registeredBy: { id: number; name: string | null; email: string; }; jobTitle: string | null; }
+interface AdminCustomer { id: number; name: string; companyName: string | null; lastYearRevenue: number | null; phone: string | null; address: string | null; status: string; notes: string | null; registrationDate: string; updatedAt: string; registeredBy: { id: number; name: string | null; email: string; }; jobTitle: string | null; decryptedIdCardNumber?: string; }
 interface PaginationInfo { page: number; pageSize: number; totalCount: number; totalPages: number; }
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -61,6 +63,10 @@ export function AdminCustomerList() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const { toast } = useToast();
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { data: session } = useSession();
+  
+  // 判断当前用户是否为超级管理员
+  const userIsSuperAdmin = useMemo(() => isSuperAdmin(session), [session]);
 
   const fetchAdminCustomers = useCallback(async (page: number, search: string) => {
     if (isUpdatingStatus !== null) return;
@@ -238,8 +244,11 @@ export function AdminCustomerList() {
               <TableRow>
                 <TableHead>姓名</TableHead>
                 <TableHead>单位名称</TableHead>
+                {userIsSuperAdmin && (
+                  <TableHead>证件号码</TableHead>
+                )}
                 <TableHead>去年营收</TableHead>
-                 <TableHead>职务</TableHead>
+                <TableHead>职务</TableHead>
                 <TableHead>联系电话</TableHead>
                 <TableHead>地址</TableHead>
                 <TableHead>状态</TableHead>
@@ -256,6 +265,17 @@ export function AdminCustomerList() {
                   <TableRow key={customer.id} className={isUpdatingStatus === customer.id ? 'opacity-50' : ''}> 
                     <TableCell className="font-medium">{customer.name}</TableCell>
                     <TableCell>{customer.companyName || '-'}</TableCell>
+                    {userIsSuperAdmin && (
+                      <TableCell>
+                        {customer.decryptedIdCardNumber ? (
+                          <div className="font-mono bg-yellow-50 px-2 py-1 border border-yellow-200 rounded">
+                            {customer.decryptedIdCardNumber}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">未设置</span>
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell>{customer.lastYearRevenue || '-'}</TableCell>
                     <TableCell>{customer.jobTitle || '-'}</TableCell>
                     <TableCell>{customer.phone || '-'}</TableCell>

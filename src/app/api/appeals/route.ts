@@ -4,9 +4,10 @@ import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { AppealStatus, Role } from '@prisma/client';
-import { encryptIdCard, hashIdCard, validateIdCard } from '@/lib/encryption';
-import { hasPermission, isAdmin } from '@/lib/auth-helpers';
+import { encryptIdCard, hashIdCard, validateIdCard, decryptIdCard } from '@/lib/encryption';
+import { hasPermission, isAdmin, isSuperAdmin } from '@/lib/auth-helpers';
 import { generateIdNumberHash } from '@/lib/utils';
+import { IdCardType } from '@/lib/client-validation';
 
 // 直接定义API配置属性
 export const dynamic = 'force-dynamic';
@@ -18,22 +19,8 @@ export const dynamicParams = true;
 // Schema for validating the POST request body
 const createAppealSchema = z.object({
   customerName: z.string().min(1, '请输入客户姓名'),
-  idNumber: z.string().min(1, '请输入身份证号码')
-    .refine(value => {
-      // 检查是否有足够的长度
-      if (value.length !== 18) {
-        return false;
-      }
-      return true;
-    }, {
-      message: '身份证号码必须为18位',
-    })
-    .refine(value => {
-      // 使用完整的验证函数检查身份证号码
-      return validateIdCard(value);
-    }, {
-      message: '身份证号码格式不正确',
-    }),
+  idNumber: z.string().min(1, '请输入证件号码'),
+  idCardType: z.nativeEnum(IdCardType).default(IdCardType.CHINA_MAINLAND),
   reason: z.string().min(1, '请输入申诉原因'),
   evidence: z.string().nullable().optional(),
   jobTitle: z.string().optional(),
@@ -126,9 +113,30 @@ export async function GET(request: Request) {
 
       console.log('查询结果数量:', appeals.length);
 
+      // 处理结果：如果是超级管理员，添加解密的证件号码
+      const processedAppeals = appeals.map((appeal: any) => {
+        const result = { ...appeal };
+        
+        // 仅为超级管理员提供证件号码
+        if (isSuperAdmin(session) && appeal.idNumber) {
+          try {
+            // 尝试解密证件号码
+            result.idNumber = decryptIdCard(appeal.idNumber);
+          } catch (error) {
+            console.error(`解密证件号码失败 (申诉ID: ${appeal.id}):`, error);
+            result.idNumber = appeal.idNumber; // 解密失败时使用原始值
+          }
+        } else {
+          // 非超级管理员不能看到证件号码
+          delete result.idNumber;
+        }
+        
+        return result;
+      });
+
       // Return paginated response
       return NextResponse.json({
-        items: appeals,
+        items: processedAppeals,
         pagination: {
           page: query.page,
           pageSize: query.pageSize,
@@ -162,7 +170,7 @@ export async function POST(request: Request) {
     }
 
     const data = await request.json();
-    const { customerName, idNumber, reason, evidence, previousAppealId } = data;
+    const { customerName, idNumber, idCardType = IdCardType.CHINA_MAINLAND, reason, evidence, previousAppealId } = data;
 
     // 验证必填字段
     if (!customerName || !idNumber || !reason) {
@@ -172,13 +180,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // 只检查输入不为空，不再验证格式
+    if (!idNumber.trim()) {
+      return NextResponse.json(
+        { message: '创建申诉失败', details: '证件号码不能为空' },
+        { status: 400 }
+      );
+    }
+
     try {
-      // 生成身份证号码哈希
-      const idNumberHash = await generateIdNumberHash(idNumber);
+      // 生成身份证号码哈希 (注意：同样适用于不同类型的证件)
+      const idNumberHash = await generateIdNumberHash(idNumber, idCardType);
 
       // 检查是否已存在相同身份证号码的申诉
       const existingAppeal = await prisma.appeal.findFirst({
-        where: { idNumberHash },
+        where: { 
+          idNumberHash,
+          partnerId: Number(session.user.id) // 仅检查当前合作伙伴的申诉
+        },
         orderBy: { createdAt: 'desc' }
       });
 
@@ -194,7 +213,8 @@ export async function POST(request: Request) {
               evidence,
               partnerId: Number(session.user.id),
               status: AppealStatus.PENDING,
-              previousAppealId: parseInt(previousAppealId)
+              previousAppealId: parseInt(previousAppealId),
+              idCardType: idCardType as string,
             },
           });
 
@@ -214,7 +234,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             message: '创建申诉失败',
-            details: '该身份证号码已存在申诉记录，请勿重复提交',
+            details: '您已经为该客户提交过申诉，请勿重复提交',
             code: 'DUPLICATE_APPEAL'
           },
           { status: 409 }
@@ -231,7 +251,8 @@ export async function POST(request: Request) {
           evidence,
           partnerId: Number(session.user.id),
           status: AppealStatus.PENDING,
-          previousAppealId: previousAppealId ? parseInt(previousAppealId) : null
+          previousAppealId: previousAppealId ? parseInt(previousAppealId) : null,
+          idCardType: idCardType as string,
         },
       });
 

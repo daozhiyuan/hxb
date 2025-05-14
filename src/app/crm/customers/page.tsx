@@ -30,6 +30,7 @@ import {
   AlertDialogTitle, AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { CustomerAddDialog } from '@/components/customer-add-dialog';
+import { idCardTypeMap } from '@/config/constants';
 
 interface Customer {
   id: number;
@@ -49,6 +50,9 @@ interface Customer {
   jobTitle: string | null;
   idCard: string;
   createdAt: Date | string;
+  idCardType?: string;
+  decryptedIdCardNumber?: string;
+  idCardNumberEncrypted?: string;
 }
 
 interface CustomerAddDialogProps {
@@ -56,6 +60,9 @@ interface CustomerAddDialogProps {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
 }
+
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic';
 
 export default function CRMCustomersPage() {
   const { data: session } = useSession();
@@ -227,12 +234,27 @@ export default function CRMCustomersPage() {
       const response = await fetch(`/api/crm/customers?${params.toString()}`);
       if (!response.ok) throw new Error('获取客户数据失败');
       
-      const data = await response.json();
-      setCustomers(data.data);
-      setTotal(data.pagination.total);
+      const result = await response.json();
+      console.log('客户API返回数据', result);
+      
+      if (result.success && result.data) {
+        const { data, pagination } = result.data;
+        if (Array.isArray(data)) {
+          setCustomers(data);
+          setTotal(pagination?.total || 0);
+        } else {
+          setCustomers([]);
+          setTotal(0);
+        }
+      } else {
+        setCustomers([]);
+        setTotal(0);
+      }
     } catch (err) {
       setError('获取客户数据失败');
       console.error(err);
+      setCustomers([]);
+      setTotal(0);
     } finally {
       setIsLoading(false);
     }
@@ -296,75 +318,159 @@ export default function CRMCustomersPage() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">报备详情</h1>
-        <Button onClick={() => setShowAddDialog(true)}>
-          新增报备
-        </Button>
-      </div>
-
-      {/* 客户列表 */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6">
-          {/* 搜索和筛选 */}
-          <div className="mb-4">
-            <Input
-              placeholder="搜索客户..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-sm"
-            />
+    <div className="container mx-auto py-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle>客户管理</CardTitle>
+          <div className="flex items-center space-x-2">
+            <Button onClick={() => setShowAddDialog(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              添加客户
+            </Button>
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="mr-2 h-4 w-4" />
+              导出
+            </Button>
           </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col space-y-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1">
+                <Input
+                  placeholder="搜索客户..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="选择状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* 客户列表表格 */}
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>姓名</TableHead>
-                  <TableHead>身份证号</TableHead>
-                  <TableHead>手机号</TableHead>
-                  <TableHead>报备时间</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>操作</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {customers.map((customer) => (
-                  <TableRow key={customer.id}>
-                    <TableCell>{customer.name}</TableCell>
-                    <TableCell>{customer.idCard}</TableCell>
-                    <TableCell>{customer.phone}</TableCell>
-                    <TableCell>{formatDate(customer.createdAt)}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(customer.status)}>
-                        {getStatusText(customer.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewDetails(customer)}
-                      >
-                        查看详情
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+            {isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            ) : error ? (
+              <div className="text-red-500">{error}</div>
+            ) : (
+              <>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>客户名称</TableHead>
+                        <TableHead>公司</TableHead>
+                        <TableHead>联系方式</TableHead>
+                        <TableHead>状态</TableHead>
+                        <TableHead>报备时间</TableHead>
+                        <TableHead className="text-right">操作</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Array.isArray(customers) && customers.length > 0 ? (
+                        customers.map((customer) => (
+                          <TableRow key={customer.id}>
+                            <TableCell>{customer.name}</TableCell>
+                            <TableCell>{customer.companyName || '-'}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-col space-y-1">
+                                {customer.phone && (
+                                  <div className="flex items-center">
+                                    <Phone className="mr-2 h-4 w-4" />
+                                    {customer.phone}
+                                  </div>
+                                )}
+                                {customer.email && (
+                                  <div className="flex items-center">
+                                    <Mail className="mr-2 h-4 w-4" />
+                                    {customer.email}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getStatusVariant(customer.status)}>
+                                {getStatusText(customer.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{formatDate(customer.registrationDate)}</TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleViewDetails(customer)}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    查看详情
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleDeleteClick(customer.id)}>
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    删除
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center">
+                            暂无数据
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                {renderPagination()}
+              </>
+            )}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      {/* 新增客户对话框 */}
       <CustomerAddDialog
         isOpen={showAddDialog}
         onOpenChange={setShowAddDialog}
         onSuccess={handleAddSuccess}
       />
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              您确定要删除这个客户吗？此操作无法撤销。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? '删除中...' : '确认删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,3 +1,11 @@
+import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import prisma from '@/lib/prisma';
+import { getSafeCustomerDetails } from '@/lib/prisma-helpers';
+import { Role } from '@prisma/client';
+import { hasPermission } from '@/lib/auth-helpers';
+
 /**
  * 删除客户
  */

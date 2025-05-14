@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic';
+
 export default function CRMSettingsPage() {
   const [settings, setSettings] = useState({
     notificationEmail: '',

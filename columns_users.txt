@@ -1,0 +1,21 @@
+Field	Type	Null	Key	Default	Extra
+id	int	NO	PRI	NULL	auto_increment
+name	varchar(191)	YES		NULL	
+email	varchar(191)	NO	UNI	NULL	
+passwordHash	varchar(191)	NO		NULL	
+role	enum('SUPER_ADMIN','ADMIN','PARTNER','USER')	NO		USER	
+isActive	tinyint(1)	NO		1	
+createdAt	datetime(3)	NO		CURRENT_TIMESTAMP(3)	DEFAULT_GENERATED
+updatedAt	datetime(3)	NO		NULL	
+accountHolder	varchar(200)	YES		NULL	
+address	varchar(500)	YES		NULL	
+bankAccount	varchar(100)	YES		NULL	
+bankName	varchar(200)	YES		NULL	
+companyName	varchar(200)	YES		NULL	
+invoiceAddress	varchar(500)	YES		NULL	
+invoicePhone	varchar(50)	YES		NULL	
+invoiceTitle	varchar(200)	YES		NULL	
+phone	varchar(50)	YES		NULL	
+taxId	varchar(100)	YES		NULL	
+idCardNumberEncrypted	varchar(500)	YES		NULL	
+idCardType	varchar(191)	YES		CHINA_MAINLAND	

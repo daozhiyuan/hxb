@@ -2,17 +2,34 @@ import * as React from "react"
 
 import type {
   ToastActionElement,
-  ToastProps,
+  ToastProps as ToastPrimitiveProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
+import {
+  Toast,
+} from "@/components/ui/toast"
+
+const TOAST_LIMIT = 5
 const TOAST_REMOVE_DELAY = 1000000
 
-type ToasterToast = ToastProps & {
+type ToastType = "success" | "error" | "default" | "destructive" | "warning" | "info"
+
+type ToasterToast = ToastPrimitiveProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
   action?: ToastActionElement
+}
+
+type ToastProps = Omit<
+  React.ComponentPropsWithoutRef<typeof Toast>,
+  "title" | "description" | "action"
+> & {
+  id?: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+  icon?: React.ReactNode
 }
 
 const actionTypes = {

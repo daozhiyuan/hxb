@@ -30,7 +30,7 @@ if (!secret) {
 
 export const authOptions: NextAuthOptions = {
   secret, // 显式设置密钥
-  debug: process.env.NODE_ENV === 'development', // 仅在开发环境开启调试
+  debug: process.env.NODE_ENV === 'development', // 在开发环境中启用调试
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -39,36 +39,53 @@ export const authOptions: NextAuthOptions = {
         password: { label: '密码', type: 'password' },
       },
       async authorize(credentials) {
+        console.log('[Auth] 尝试认证用户:', credentials?.email);
+        
         if (!credentials?.email || !credentials?.password) {
+          console.error('[Auth] 认证失败: 缺少邮箱或密码');
           throw new Error('请输入邮箱和密码');
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: {
+              email: credentials.email,
+            },
+          });
 
-        if (!user) {
-          throw new Error('用户不存在');
+          if (!user) {
+            console.error('[Auth] 认证失败: 用户不存在', credentials.email);
+            throw new Error('用户不存在');
+          }
+
+          console.log('[Auth] 用户存在, 检查状态:', user.email, 'isActive:', user.isActive);
+
+          if (!user.isActive) {
+            console.error('[Auth] 认证失败: 账号未激活', user.email);
+            throw new Error('账号未激活，请联系管理员');
+          }
+
+          // 确保密码比较正确执行
+          const isValid = await compare(credentials.password, user.passwordHash);
+
+          if (!isValid) {
+            console.error('[Auth] 认证失败: 密码错误', user.email);
+            throw new Error('密码错误');
+          }
+
+          console.log('[Auth] 认证成功:', user.email, 'role:', user.role);
+          
+          // 返回用户信息，确保ID是字符串
+          return {
+            id: user.id.toString(),
+            email: user.email,
+            name: user.name,
+            role: user.role,
+          };
+        } catch (error) {
+          console.error('[Auth] 认证过程中发生错误:', error);
+          throw error;
         }
-
-        if (!user.isActive) {
-          throw new Error('账号未激活，请联系管理员');
-        }
-
-        const isValid = await compare(credentials.password, user.passwordHash);
-
-        if (!isValid) {
-          throw new Error('密码错误');
-        }
-
-        return {
-          id: user.id.toString(),
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
       },
     }),
   ],
@@ -76,16 +93,21 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       // 初始登录时，添加用户数据到token
       if (user) {
+        console.log('[Auth JWT] 生成JWT, 用户:', user.email);
         token.role = (user as any).role;
-        token.id = user.id;
+        token.id = Number(user.id); // 确保id始终是数字类型
         token.email = user.email;
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
+        console.log('[Auth Session] 生成会话, 用户:', token.email);
         session.user.role = token.role as Role;
-        session.user.id = token.id as unknown as number;
+        // 确保ID是有效的数字并进行类型转换
+        if (token.id !== undefined && token.id !== null) {
+          session.user.id = Number(token.id);
+        }
         session.user.email = token.email as string;
       }
       return session;
@@ -108,6 +130,24 @@ export const authOptions: NextAuthOptions = {
   cookies: {
     sessionToken: {
       name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    callbackUrl: {
+      name: `next-auth.callback-url`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: `next-auth.csrf-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",

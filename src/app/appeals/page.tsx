@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { isSuperAdmin } from '@/lib/auth-helpers';
 
 interface Appeal {
   id: number;
@@ -42,6 +43,7 @@ interface Appeal {
   reason: string;
   status: AppealStatus;
   createdAt: string;
+  idNumber?: string;
   partner: {
     name: string;
     email: string;
@@ -65,6 +67,8 @@ const statusMap = {
   [AppealStatus.REJECTED]: { label: '已驳回', color: 'bg-red-500' },
 };
 
+export const dynamic = 'force-dynamic';
+
 export default function AppealsPage() {
   const { data: session } = useSession();
   const { toast } = useToast();
@@ -83,6 +87,9 @@ export default function AppealsPage() {
   const [batchStatus, setBatchStatus] = useState<AppealStatus | ''>('');
   const [batchRemarks, setBatchRemarks] = useState('');
   const [updating, setUpdating] = useState(false);
+
+  // 判断当前用户是否为超级管理员
+  const userIsSuperAdmin = session && isSuperAdmin(session);
 
   // 获取申诉列表
   const fetchAppeals = async () => {
@@ -318,6 +325,9 @@ export default function AppealsPage() {
                   </TableHead>
                   <TableHead>ID</TableHead>
                   <TableHead>客户姓名</TableHead>
+                  {userIsSuperAdmin && (
+                    <TableHead>证件号码</TableHead>
+                  )}
                   <TableHead>申诉原因</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead>提交时间</TableHead>
@@ -329,14 +339,14 @@ export default function AppealsPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center">
+                    <TableCell colSpan={userIsSuperAdmin ? 10 : 9} className="h-24 text-center">
                       <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
                       加载中...
                     </TableCell>
                   </TableRow>
                 ) : appeals.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="h-24 text-center">
+                    <TableCell colSpan={userIsSuperAdmin ? 10 : 9} className="h-24 text-center">
                       暂无数据
                     </TableCell>
                   </TableRow>
@@ -353,6 +363,17 @@ export default function AppealsPage() {
                       </TableCell>
                       <TableCell>{appeal.id}</TableCell>
                       <TableCell>{appeal.customerName}</TableCell>
+                      {userIsSuperAdmin && (
+                        <TableCell>
+                          {appeal.idNumber ? (
+                            <div className="font-mono bg-yellow-50 px-2 py-1 border border-yellow-200 rounded">
+                              {appeal.idNumber}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">-</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell className="max-w-[200px] truncate">
                         {appeal.reason}
                       </TableCell>

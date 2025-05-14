@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import prisma from "@/lib/prisma"
 import { getSafeCustomersList } from "@/lib/prisma-helpers"
+import { successResponse, errorResponse } from '@/lib/api-response'
+import { isSuperAdmin } from '@/lib/auth-helpers'
+import { decryptIdCard } from '@/lib/encryption'
 
 // 告诉 Next.js 这个路由是动态的
 export const dynamic = 'force-dynamic'
@@ -50,7 +53,14 @@ export async function GET(request: Request) {
       })
       
       console.log(`成功获取客户列表: ${Array.isArray(result.data) ? result.data.length : 0} 条记录`);
-      return NextResponse.json(result)
+      // 如果是超级管理员，批量解密
+      if (isSuperAdmin(session) && Array.isArray(result.data)) {
+        result.data = result.data.map((customer: any) => ({
+          ...customer,
+          decryptedIdCardNumber: customer.idCardNumberEncrypted ? decryptIdCard(customer.idCardNumberEncrypted) : ''
+        }));
+      }
+      return successResponse(result)
     } catch (databaseError) {
       console.warn("使用查询辅助函数获取客户列表失败，尝试使用直接SQL查询:", databaseError)
       
@@ -104,7 +114,7 @@ export async function GET(request: Request) {
         const customers = await prisma.$queryRawUnsafe(dataQuery, ...params, pageSize, skip);
         console.log(`SQL查询成功返回 ${(customers as any[]).length} 条记录`);
         
-        return NextResponse.json({
+        return successResponse({
           data: customers || [],
           pagination: {
             page,
@@ -134,7 +144,7 @@ export async function GET(request: Request) {
           
           console.log(`简化查询成功返回 ${Array.isArray(customers) ? customers.length : 0} 条记录`);
           
-          return NextResponse.json({
+          return successResponse({
             data: customers || [],
             pagination: {
               page,
@@ -147,7 +157,7 @@ export async function GET(request: Request) {
           console.error("所有查询方法都失败，返回空结果:", finalError);
           
           // 返回空结果作为最终后备方案
-          return NextResponse.json({
+          return successResponse({
             data: [],
             pagination: {
               page,
@@ -162,15 +172,6 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("获取客户列表失败:", error)
     // 返回空结果作为后备方案
-    return NextResponse.json({
-      data: [],
-      pagination: {
-        page,
-        pageSize,
-        total: 0,
-        totalPages: 0
-      },
-      error: '获取客户列表失败，请联系管理员'
-    });
+    return errorResponse('获取客户列表失败，请联系管理员');
   }
 }

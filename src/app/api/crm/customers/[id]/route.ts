@@ -6,6 +6,14 @@ import { getSafeCustomerDetails } from "@/lib/prisma-helpers";
 import { decryptIdCard } from "@/lib/encryption";
 import { Role } from "@prisma/client";
 import { hasPermission, isAdmin, isSuperAdmin } from "@/lib/auth-helpers";
+import { 
+  successResponse, 
+  errorResponse, 
+  unauthorizedResponse, 
+  forbiddenResponse, 
+  notFoundResponse, 
+  serverErrorResponse 
+} from "@/lib/api-response";
 
 export const dynamic = 'force-dynamic';
 
@@ -16,43 +24,49 @@ export async function GET(
   const session = await getServerSession(authOptions);
   
   if (!session) {
-    return NextResponse.json({ error: '未授权' }, { status: 401 });
+    return unauthorizedResponse();
   }
   
   try {
     const customerId = parseInt(params.id);
     
     if (isNaN(customerId)) {
-      return NextResponse.json({ error: '无效的客户ID' }, { status: 400 });
+      return errorResponse('无效的客户ID', 400, 'INVALID_ID');
     }
     
     // 使用安全查询辅助函数获取客户详情
     const customer = await getSafeCustomerDetails(customerId);
     
     if (!customer) {
-      return NextResponse.json({ error: '客户不存在' }, { status: 404 });
+      return notFoundResponse('客户', customerId);
     }
     
     // 使用权限辅助函数检查访问权限
-    if (!hasPermission(session, customer.registeredByPartnerId)) {
-      return NextResponse.json({ error: '没有权限查看此客户' }, { status: 403 });
+    if (!hasPermission(session, (customer as any).registeredByPartnerId)) {
+      return forbiddenResponse('没有权限查看此客户');
     }
     
     // 解密身份证号码（如果是超级管理员）
     let decryptedData = { ...customer };
-    if (isSuperAdmin(session) && customer.idCardNumberEncrypted) {
+    // 始终返回加密字段
+    decryptedData.idCardNumberEncrypted = (customer as any).idCardNumberEncrypted || '';
+    if (isSuperAdmin(session) && (customer as any).idCardNumberEncrypted) {
       try {
-        decryptedData.decryptedIdCardNumber = decryptIdCard(customer.idCardNumberEncrypted);
+        const decryptedResult = decryptIdCard((customer as any).idCardNumberEncrypted);
+        if (decryptedResult.startsWith('解密失败') || 
+            decryptedResult.startsWith('格式错误') ||
+            decryptedResult === '加密密钥未初始化') {
+          (decryptedData as any).decryptedIdCardNumber = '[解密失败]';
+        } else {
+          (decryptedData as any).decryptedIdCardNumber = decryptedResult;
+        }
       } catch (error) {
-        console.error("解密身份证号码失败:", error);
-        decryptedData.decryptedIdCardNumber = '[解密失败]';
+        (decryptedData as any).decryptedIdCardNumber = '[解密失败]';
       }
     }
-    
-    return NextResponse.json(decryptedData);
+    return successResponse(decryptedData);
   } catch (error) {
-    console.error("获取客户详情失败:", error);
-    return NextResponse.json({ error: "获取客户详情失败" }, { status: 500 });
+    return serverErrorResponse(error);
   }
 }
 
@@ -66,26 +80,26 @@ export async function PATCH(
   const session = await getServerSession(authOptions);
   
   if (!session) {
-    return NextResponse.json({ error: '未授权' }, { status: 401 });
+    return unauthorizedResponse();
   }
   
   try {
     const customerId = parseInt(params.id);
     
     if (isNaN(customerId)) {
-      return NextResponse.json({ error: '无效的客户ID' }, { status: 400 });
+      return errorResponse('无效的客户ID', 400, 'INVALID_ID');
     }
     
     // 获取客户详情以检查权限
     const customer = await getSafeCustomerDetails(customerId);
     
     if (!customer) {
-      return NextResponse.json({ error: '客户不存在' }, { status: 404 });
+      return notFoundResponse('客户', customerId);
     }
     
     // 使用权限辅助函数检查访问权限
     if (!hasPermission(session, customer.registeredByPartnerId)) {
-      return NextResponse.json({ error: '没有权限更新此客户' }, { status: 403 });
+      return forbiddenResponse('没有权限更新此客户');
     }
     
     const body = await request.json();
@@ -97,7 +111,7 @@ export async function PATCH(
     const allowedFields = [
       'name', 'companyName', 'phone', 'email', 'status', 
       'notes', 'address', 'jobTitle', 'industry', 'source',
-      'followUpStatus', 'priority', 'lastYearRevenue'
+      'followUpStatus', 'priority', 'lastYearRevenue', 'idCardType'
     ];
     
     // 只更新请求中包含的允许字段
@@ -112,7 +126,7 @@ export async function PATCH(
       try {
         updateData.idCardNumberEncrypted = body.idNumber;
       } catch (error) {
-        console.error("加密身份证号码失败:", error);
+        return errorResponse('身份证号码加密失败', 422, 'ENCRYPTION_ERROR');
       }
     }
     
@@ -140,10 +154,9 @@ export async function PATCH(
       }
     });
     
-    return NextResponse.json(updatedCustomer);
+    return successResponse(updatedCustomer);
   } catch (error) {
-    console.error("更新客户信息失败:", error);
-    return NextResponse.json({ error: "更新客户信息失败" }, { status: 500 });
+    return serverErrorResponse(error);
   }
 }
 
@@ -157,26 +170,26 @@ export async function DELETE(
   const session = await getServerSession(authOptions);
   
   if (!session) {
-    return NextResponse.json({ error: '未授权' }, { status: 401 });
+    return unauthorizedResponse();
   }
   
   try {
     const customerId = parseInt(params.id);
     
     if (isNaN(customerId)) {
-      return NextResponse.json({ error: '无效的客户ID' }, { status: 400 });
+      return errorResponse('无效的客户ID', 400, 'INVALID_ID');
     }
     
     // 获取客户详情以检查权限
     const customer = await getSafeCustomerDetails(customerId);
     
     if (!customer) {
-      return NextResponse.json({ error: '客户不存在' }, { status: 404 });
+      return notFoundResponse('客户', customerId);
     }
     
     // 使用权限辅助函数检查访问权限 - 只有管理员和超级管理员可以删除客户
     if (!hasPermission(session, null, [Role.ADMIN, Role.SUPER_ADMIN])) {
-      return NextResponse.json({ error: '没有权限删除此客户' }, { status: 403 });
+      return forbiddenResponse('没有权限删除此客户');
     }
     
     // 删除与客户相关的所有跟进记录
@@ -199,9 +212,8 @@ export async function DELETE(
       where: { id: customerId }
     });
     
-    return NextResponse.json({ message: '客户已成功删除' });
+    return successResponse({ message: '客户已成功删除' });
   } catch (error) {
-    console.error("删除客户失败:", error);
-    return NextResponse.json({ error: "删除客户失败" }, { status: 500 });
+    return serverErrorResponse(error);
   }
 } 

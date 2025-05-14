@@ -9,40 +9,52 @@ datasource db {
 }
 
 model User {
-  id               Int         @id @default(autoincrement())
-  name             String?
-  email            String      @unique
-  passwordHash     String
-  role             Role        @default(USER)
-  isActive         Boolean     @default(true)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  followUps        FollowUp[]
-  submittedAppeals Appeal[]    @relation("PartnerAppeals")
-  processedAppeals Appeal[]    @relation("OperatorAppeals")
-  appealLogs       AppealLog[]
-  customers        Customer[]
+  id                    Int         @id @default(autoincrement())
+  name                  String?
+  email                 String      @unique
+  passwordHash          String
+  role                  Role        @default(USER)
+  isActive              Boolean     @default(true)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  accountHolder         String?     @db.VarChar(200)
+  address               String?     @db.VarChar(500)
+  bankAccount           String?     @db.VarChar(100)
+  bankName              String?     @db.VarChar(200)
+  companyName           String?     @db.VarChar(200)
+  invoiceAddress        String?     @db.VarChar(500)
+  invoicePhone          String?     @db.VarChar(50)
+  invoiceTitle          String?     @db.VarChar(200)
+  phone                 String?     @db.VarChar(50)
+  taxId                 String?     @db.VarChar(100)
+  idCardNumberEncrypted String?     @db.VarChar(500)
+  idCardType            String?     @default("CHINA_MAINLAND")
+  followUps             FollowUp[]
+  submittedAppeals      Appeal[]    @relation("PartnerAppeals")
+  processedAppeals      Appeal[]    @relation("OperatorAppeals")
+  appealLogs            AppealLog[]
+  customers             Customer[]
 
   @@index([email])
   @@map("users")
 }
 
 model FollowUp {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   content      String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
   customerId   Int
   createdById  Int
-  type         String   @default("MEETING")
+  type         String    @default("MEETING")
   attachments  Json?
-  duration     Int?     @default(30)
-  location     String?  @db.VarChar(200)
+  duration     Int?      @default(30)
+  location     String?   @db.VarChar(200)
   nextSteps    String?
   notes        String?
-  outcome      String?  @db.VarChar(100)
+  outcome      String?   @db.VarChar(100)
   participants Json?
-  sentiment    String?  @db.VarChar(20)
-  createdBy    User     @relation(fields: [createdById], references: [id])
+  sentiment    String?   @db.VarChar(20)
+  createdBy    User      @relation(fields: [createdById], references: [id])
   customer     Customer? @relation(fields: [customerId], references: [id])
 
   @@index([customerId])
@@ -61,26 +73,28 @@ model CustomerTag {
 }
 
 model Appeal {
-  id              Int         @id @default(autoincrement())
-  customerName    String
-  idNumber        String
-  idNumberHash    String      @unique
-  reason          String
-  evidence        String?
-  status          AppealStatus @default(PENDING)
-  partnerId       Int
-  operatorId      Int?
+  id               Int          @id @default(autoincrement())
+  customerName     String
+  idNumber         String?      @db.Text
+  idNumberHash     String
+  reason           String
+  evidence         String?
+  status           AppealStatus @default(PENDING)
+  partnerId        Int
+  operatorId       Int?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
   previousAppealId Int?
-  remarks         String?
-  adminComment    String?
-  previousAppeal  Appeal?     @relation("AppealToAppeal", fields: [previousAppealId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  nextAppeals     Appeal[]    @relation("AppealToAppeal")
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  partner         User        @relation("PartnerAppeals", fields: [partnerId], references: [id])
-  operator        User?       @relation("OperatorAppeals", fields: [operatorId], references: [id])
-  logs            AppealLog[]
+  remarks          String?
+  adminComment     String?
+  idCardType       String       @default("CHINA_MAINLAND")
+  previousAppeal   Appeal?      @relation("AppealToAppeal", fields: [previousAppealId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  nextAppeals      Appeal[]     @relation("AppealToAppeal")
+  partner          User         @relation("PartnerAppeals", fields: [partnerId], references: [id])
+  operator         User?        @relation("OperatorAppeals", fields: [operatorId], references: [id])
+  logs             AppealLog[]
 
+  @@unique([partnerId, idNumberHash])
   @@index([status])
   @@index([partnerId])
   @@index([operatorId])
@@ -115,7 +129,7 @@ model Customer {
   registeredByPartnerId Int
   address               String?
   idCardHash            String?          @unique
-  idCardNumberEncrypted String?
+  idCardNumberEncrypted String?          @db.Text
   lastYearRevenue       Float?
   followUpStatus        String?          @db.VarChar(50)
   industry              String?          @db.VarChar(100)
@@ -126,12 +140,22 @@ model Customer {
   position              String?          @db.VarChar(100)
   priority              String?          @db.VarChar(20)
   source                String?          @db.VarChar(50)
+  idCardType            String?          @default("CHINA_MAINLAND")
   registeredBy          User             @relation(fields: [registeredByPartnerId], references: [id])
   followUps             FollowUp[]
   tags                  CustomerTag[]    @relation("CustomerToCustomerTag")
 
   @@index([registeredByPartnerId])
   @@map("customers")
+}
+
+model CustomerToCustomerTag {
+  A Int
+  B Int
+
+  @@unique([A, B], map: "_CustomerToCustomerTag_AB_unique")
+  @@index([B], map: "_CustomerToCustomerTag_B_index")
+  @@map("_CustomerToCustomerTag")
 }
 
 enum Role {

@@ -88,8 +88,17 @@ export async function getSafeCustomersList(options: {
     const dataQuery = `SELECT * FROM customers${whereClause}${orderClause}${limitClause}`;
     const customers = await prisma.$queryRawUnsafe(dataQuery, ...params, pageSize, skip);
     
+    // 批量解密证件号
+    const { decryptIdCard } = await import('./encryption');
+    const processedCustomers = (customers || []).map((customer: any) => ({
+      ...customer,
+      // 确保registrationDate存在
+      registrationDate: customer.registrationDate || customer.createdAt || null,
+      decryptedIdCardNumber: customer.idCardNumberEncrypted ? decryptIdCard(customer.idCardNumberEncrypted) : ''
+    }));
+
     return {
-      data: customers || [],
+      data: processedCustomers,
       pagination: {
         page,
         pageSize,
@@ -189,7 +198,26 @@ export async function getSafeCustomerDetails(customerId: number) {
 
   // 合并结果
   return {
-    ...customer,
+    ...(customer as {
+      id: number;
+      name: string;
+      companyName: string | null;
+      phone: string | null;
+      email: string | null;
+      status: string;
+      notes: string | null;
+      registrationDate: Date;
+      updatedAt: Date;
+      jobTitle: string | null;
+      address: string | null;
+      idCardHash: string | null;
+      idCardNumberEncrypted: string | null;
+      lastYearRevenue: number | null;
+      registeredByPartnerId: number;
+      idCardType?: string;
+      tags?: any[];
+      registeredBy?: any;
+    }),
     followUps: followUps || []
   };
 }
@@ -204,46 +232,90 @@ export async function getSafeCustomerFollowUps(options: {
 }) {
   const { customerId, page, pageSize } = options;
 
-  // 获取跟进记录列表，只使用确认存在的字段
-  const { data: followUps } = await safeQuery(() => 
-    prisma.followUp.findMany({
-      where: { customerId },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        content: true,
-        createdAt: true,
-        customerId: true,
-        createdById: true,
-        type: true,
-        // 不包含可能不存在的字段: notes, outcome, participants, sentiment, duration, location, attachments
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true
+  // 添加参数验证和日志记录
+  if (!customerId || isNaN(Number(customerId))) {
+    console.error(`[getSafeCustomerFollowUps] 无效的客户ID: ${customerId}`);
+    return {
+      data: [],
+      pagination: {
+        page,
+        pageSize,
+        total: 0,
+        totalPages: 0,
+        error: '无效的客户ID'
+      }
+    };
+  }
+
+  console.log(`[getSafeCustomerFollowUps] 获取客户ID ${customerId} 的跟进记录, 页码: ${page}, 每页数量: ${pageSize}`);
+
+  try {
+    // 获取跟进记录列表，只使用确认存在的字段
+    const { data: followUps, error: followUpsError } = await safeQuery(() => 
+      prisma.followUp.findMany({
+        where: { customerId },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          content: true,
+          createdAt: true,
+          customerId: true,
+          createdById: true,
+          type: true,
+          // 不包含可能不存在的字段: notes, outcome, participants, sentiment, duration, location, attachments
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
           }
         }
-      }
-    })
-  );
-
-  // 获取总数
-  const { data: total } = await safeQuery(() => 
-    prisma.followUp.count({ where: { customerId } })
-  );
-
-  return {
-    data: followUps || [],
-    pagination: {
-      page,
-      pageSize,
-      total: total || 0,
-      totalPages: Math.ceil((total || 0) / pageSize)
+      })
+    );
+    
+    if (followUpsError) {
+      console.error(`[getSafeCustomerFollowUps] 获取跟进记录失败: ${followUpsError.message}`, followUpsError);
+    } else {
+      console.log(`[getSafeCustomerFollowUps] 成功获取 ${followUps?.length || 0} 条跟进记录`);
     }
-  };
+
+    // 获取总数
+    const { data: total, error: totalError } = await safeQuery(() => 
+      prisma.followUp.count({ where: { customerId } })
+    );
+    
+    if (totalError) {
+      console.error(`[getSafeCustomerFollowUps] 获取总数失败: ${totalError.message}`, totalError);
+    }
+
+    const totalPages = Math.ceil((total || 0) / pageSize);
+    console.log(`[getSafeCustomerFollowUps] 总记录数: ${total || 0}, 总页数: ${totalPages}`);
+
+    return {
+      data: followUps || [],
+      pagination: {
+        page,
+        pageSize,
+        total: total || 0,
+        totalPages
+      }
+    };
+  } catch (error) {
+    console.error(`[getSafeCustomerFollowUps] 处理跟进记录时发生异常:`, error);
+    return {
+      data: [],
+      pagination: {
+        page,
+        pageSize,
+        total: 0,
+        totalPages: 0,
+        error: '获取跟进记录时发生错误'
+      }
+    };
+  }
 }
 
 /**
@@ -261,26 +333,55 @@ export async function safeCreateFollowUp(data: {
     ? parseInt(data.createdById, 10) 
     : data.createdById;
 
+  console.log(`[safeCreateFollowUp] 开始创建跟进记录: 客户ID=${customerId}, 用户ID=${createdById}, 内容长度=${content.length}, 类型=${type}`);
+
+  // 验证参数
+  if (!customerId || isNaN(Number(customerId))) {
+    console.error(`[safeCreateFollowUp] 无效的客户ID: ${customerId}`);
+    return null;
+  }
+
+  if (!createdById || isNaN(Number(createdById))) {
+    console.error(`[safeCreateFollowUp] 无效的创建者ID: ${createdById}, 原始值: ${data.createdById}, 类型: ${typeof data.createdById}`);
+    return null;
+  }
+
+  if (!content || typeof content !== 'string') {
+    console.error(`[safeCreateFollowUp] 无效的跟进内容: ${content}, 类型: ${typeof content}`);
+    return null;
+  }
+
   try {
+    console.log(`[safeCreateFollowUp] 参数验证通过，准备事务操作`);
     // 使用纯SQL方式创建记录，完全绕过Prisma模型的自动映射
     // 这是最安全的方法，可以避免模型与数据库不一致的问题
     const createdFollowUpId = await prisma.$transaction(async (tx) => {
-      // Step 1: 插入记录
-      await tx.$executeRaw`
-        INSERT INTO FollowUp (content, customerId, createdById, type, createdAt, duration)
-        VALUES (${content}, ${customerId}, ${createdById}, ${type}, NOW(), 30);
-      `;
-      
-      // Step 2: 获取插入的ID并确保转换为Number类型
-      const result = await tx.$queryRaw<{id: number}[]>`
-        SELECT CAST(LAST_INSERT_ID() AS SIGNED) as id;
-      `;
-      
-      return Number(result[0].id);
+      try {
+        // Step 1: 插入记录
+        console.log(`[safeCreateFollowUp] 执行SQL插入: (${content}, ${customerId}, ${createdById}, ${type})`);
+        await tx.$executeRaw`
+          INSERT INTO FollowUp (content, customerId, createdById, type, createdAt, duration)
+          VALUES (${content}, ${customerId}, ${createdById}, ${type}, NOW(), 30);
+        `;
+        
+        // Step 2: 获取插入的ID并确保转换为Number类型
+        const result = await tx.$queryRaw<{id: number}[]>`
+          SELECT CAST(LAST_INSERT_ID() AS SIGNED) as id;
+        `;
+        
+        const id = Number(result[0].id);
+        console.log(`[safeCreateFollowUp] 获取到新创建的记录ID: ${id}`);
+        return id;
+      } catch (txError) {
+        console.error(`[safeCreateFollowUp] 事务执行失败:`, txError);
+        throw txError; // 重新抛出错误以便事务回滚
+      }
     });
     
+    console.log(`[safeCreateFollowUp] 事务完成，跟进记录ID: ${createdFollowUpId}`);
+    
     // 使用安全查询获取创建的记录
-    const { data: followUp } = await safeQuery(() => 
+    const { data: followUp, error: queryError } = await safeQuery(() => 
       prisma.followUp.findUnique({
         where: { id: createdFollowUpId },
         select: {
@@ -302,9 +403,31 @@ export async function safeCreateFollowUp(data: {
       })
     );
     
+    if (queryError) {
+      console.error(`[safeCreateFollowUp] 查询创建的记录失败:`, queryError);
+    }
+    
+    if (!followUp) {
+      console.error(`[safeCreateFollowUp] 记录已创建(ID=${createdFollowUpId})但无法查询详情`);
+      // 构造一个基本响应，确保客户端至少知道创建成功
+      return {
+        id: createdFollowUpId,
+        content,
+        customerId,
+        createdById,
+        type,
+        createdAt: new Date().toISOString(),
+        duration: 30
+      };
+    }
+    
+    console.log(`[safeCreateFollowUp] 成功完成: 返回完整记录，ID=${followUp.id}`);
     return followUp;
   } catch (error) {
-    console.error('创建跟进记录失败:', error);
+    console.error('[safeCreateFollowUp] 创建跟进记录失败:', error);
+    if (error instanceof Error) {
+      console.error('[safeCreateFollowUp] 错误详情:', error.message, error.stack);
+    }
     return null;
   }
 }
@@ -386,6 +509,7 @@ export async function safeCreateCustomer(data: {
   idCardNumberEncrypted: string;
   idCardHash: string;
   registeredByPartnerId: number;
+  idCardType?: string;
   companyName?: string | null;
   lastYearRevenue?: number | string | null;
   phone?: string | null;
@@ -423,6 +547,7 @@ export async function safeCreateCustomer(data: {
         idCardNumberEncrypted: data.idCardNumberEncrypted,
         idCardHash: data.idCardHash,
         registeredByPartnerId: data.registeredByPartnerId,
+        idCardType: data.idCardType || 'CHINA_MAINLAND',
         companyName: data.companyName || null,
         lastYearRevenue: processedRevenue,
         phone: data.phone || null,

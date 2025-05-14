@@ -2,12 +2,16 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { Role, AppealStatus } from '@prisma/client';
+import { Role, AppealStatus, Appeal } from '@prisma/client';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
 // 导入API配置
-export { dynamic, runtime, fetchCache, revalidate, dynamicParams } from '../../config';
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+export const runtime = 'nodejs';
 
 export async function GET(request: Request) {
   try {
@@ -78,7 +82,10 @@ export async function GET(request: Request) {
       '备注'
     ].join(',');
 
-    const rows = appeals.map(appeal => {
+    const rows = appeals.map((appeal: Appeal & {
+      partner: { name: string; email: string };
+      operator?: { name: string; email: string };
+    }) => {
       const statusMap: Record<AppealStatus, string> = {
         [AppealStatus.PENDING]: '待处理',
         [AppealStatus.PROCESSING]: '处理中',
@@ -94,7 +101,7 @@ export async function GET(request: Request) {
         format(new Date(appeal.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN }),
         appeal.partner.name,
         appeal.operator?.name || '-',
-        appeal.processedAt ? format(new Date(appeal.processedAt), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN }) : '-',
+        appeal.status !== AppealStatus.PENDING ? format(new Date(appeal.updatedAt), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN }) : '-',
         `"${(appeal.remarks || '').replace(/"/g, '""')}"`
       ].join(',');
     });

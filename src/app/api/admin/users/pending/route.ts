@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import { isAdmin } from '@/lib/auth-helpers';
 
 // 告诉 Next.js 这个路由是动态的
 export const dynamic = 'force-dynamic';
@@ -15,8 +16,8 @@ export async function GET(request: Request) {
     const session = await getServerSession(authOptions);
     console.log('当前会话:', session?.user?.email, '角色:', session?.user?.role);
     
-    // 检查是否是管理员
-    if (!session?.user || session.user.role !== Role.ADMIN) {
+    // 使用isAdmin辅助函数检查权限，允许ADMIN和SUPER_ADMIN角色
+    if (!isAdmin(session)) {
       console.log('权限检查失败: 非管理员用户');
       return NextResponse.json({ message: '未授权操作' }, { status: 403 });
     }

@@ -9,7 +9,7 @@ services:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: nextn
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d
@@ -31,12 +31,14 @@ services:
     volumes:
       - ./public/uploads:/app/public/uploads
       - ./logs:/app/logs
+      - ./src:/app/src
+      - ./.env:/app/.env
     environment:
       - DATABASE_URL=mysql://root:password@db:3306/nextn
-      - NEXTAUTH_SECRET=supersecretstring
+      - NEXTAUTH_SECRET=LLwTqhMaKvmhLxsM4SRs+GJ8cZ71eHdQ
       - NEXTAUTH_URL=http://localhost:3005
       - NODE_ENV=production
-      - ENCRYPTION_KEY=your_32byte_strong_encryption_key_here
+      - ENCRYPTION_KEY=1ZACHw0/coS8sknni7E+PRvvaZ9UMv/K1cQvMDA4fnU=
       - OLD_ENCRYPTION_KEY=your_optional_old_encryption_key
     depends_on:
       db:

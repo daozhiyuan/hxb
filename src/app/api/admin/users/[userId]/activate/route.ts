@@ -24,9 +24,9 @@ export async function PATCH(
     const session = await getServerSession(authOptions);
     console.log('当前会话:', session?.user?.email, '角色:', session?.user?.role);
     
-    // 检查是否是管理员
-    if (!session?.user || session.user.role !== Role.ADMIN) {
-      console.log('权限检查失败: 非管理员用户');
+    // 检查是否是管理员或超级管理员
+    if (!session?.user || (session.user.role !== Role.ADMIN && session.user.role !== Role.SUPER_ADMIN)) {
+      console.log('权限检查失败: 非管理员或超级管理员用户');
       return NextResponse.json({ message: '未授权操作' }, { status: 403 });
     }
 

@@ -4,6 +4,20 @@ import { hash } from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  // 创建超级管理员用户
+  const superAdminPassword = await hash('superadmin123', 12);
+  const superAdmin = await prisma.user.upsert({
+    where: { email: 'superadmin@example.com' },
+    update: {},
+    create: {
+      email: 'superadmin@example.com',
+      name: '超级管理员',
+      passwordHash: superAdminPassword,
+      role: Role.SUPER_ADMIN,
+      isActive: true,
+    },
+  });
+
   // 创建管理员用户
   const adminPassword = await hash('admin123', 12);
   const admin = await prisma.user.upsert({
@@ -14,6 +28,7 @@ async function main() {
       name: '系统管理员',
       passwordHash: adminPassword,
       role: Role.ADMIN,
+      isActive: true,
     },
   });
 
@@ -27,6 +42,21 @@ async function main() {
       name: '测试合作伙伴',
       passwordHash: partnerPassword,
       role: Role.PARTNER,
+      isActive: true,
+    },
+  });
+
+  // 创建普通用户
+  const userPassword = await hash('user123', 12);
+  const user = await prisma.user.upsert({
+    where: { email: 'user@example.com' },
+    update: {},
+    create: {
+      email: 'user@example.com',
+      name: '普通用户',
+      passwordHash: userPassword,
+      role: Role.USER,
+      isActive: true,
     },
   });
 
@@ -51,8 +81,10 @@ async function main() {
   ]);
 
   console.log('数据库初始化完成');
+  console.log('超级管理员账号:', superAdmin.email);
   console.log('管理员账号:', admin.email);
   console.log('合作伙伴账号:', partner.email);
+  console.log('普通用户账号:', user.email);
   console.log('创建的标签:', tags.map(tag => tag.name).join(', '));
 }
 

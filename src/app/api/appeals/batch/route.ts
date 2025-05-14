@@ -3,11 +3,15 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
-import { AppealStatus, Role } from '@prisma/client';
+import { AppealStatus, Role, PrismaClient } from '@prisma/client';
 import { hasPermission } from '@/lib/auth-helpers';
 
 // 导入API配置
-export { dynamic, runtime, fetchCache, revalidate, dynamicParams } from '../../config';
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+export const runtime = 'nodejs';
 
 // 验证请求体
 const batchUpdateSchema = z.object({
@@ -61,7 +65,7 @@ export async function POST(request: Request) {
     }
 
     // 批量更新申诉状态
-    const updatedAppeals = await prisma.$transaction(async (tx) => {
+    const updatedAppeals = await prisma.$transaction(async (tx: PrismaClient) => {
       const updates = await tx.appeal.updateMany({
         where: {
           id: { in: appealIds },
@@ -70,7 +74,6 @@ export async function POST(request: Request) {
           status,
           remarks,
           operatorId: Number(session.user.id),
-          processedAt: new Date(),
         },
       });
 

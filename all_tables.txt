@@ -1,0 +1,9 @@
+Tables_in_crm
+Appeal
+AppealLog
+FollowUp
+_CustomerToCustomerTag
+_prisma_migrations
+customer_tags
+customers
+users

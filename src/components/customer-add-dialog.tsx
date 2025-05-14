@@ -48,6 +48,7 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
   const [submitting, setSubmitting] = useState(false); // For form submission
   const { toast } = useToast();
   const [customerStatus, setCustomerStatus] = useState<string>(CustomerStatusEnum.FOLLOWING); // Default status
+  const [idCardType, setIdCardType] = useState<string>('CHINA_MAINLAND'); // 新增证件类型状态，默认为中国大陆身份证
   
   // 申诉相关状态
   const [showAppealDialog, setShowAppealDialog] = useState<boolean>(false);
@@ -60,11 +61,16 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
     setCustomerStatus(value);
   };
 
+  // 处理证件类型变更
+  const handleIdCardTypeChange = (value: string) => {
+    setIdCardType(value);
+  };
+
   const handleCheckDuplication = async () => {
     if (!idNumber) {
       toast({
-        title: '请输入身份证号码',
-        description: '需要身份证号码才能进行查重。',
+        title: '请输入证件号码',
+        description: '需要证件号码才能进行查重。',
         variant: 'destructive',
       });
       return;
@@ -73,8 +79,8 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
     setIsDuplicate(null); // Reset previous check
 
     try {
-      // 实现查重功能
-      const response = await fetch(`/api/customers/check-duplicate?idNumber=${encodeURIComponent(idNumber)}`, {
+      // 实现查重功能，添加证件类型参数
+      const response = await fetch(`/api/customers/check-duplicate?idNumber=${encodeURIComponent(idNumber)}&idCardType=${encodeURIComponent(idCardType)}`, {
         method: 'GET',
       });
       
@@ -112,10 +118,10 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
     setSubmitting(true);
   
     // 验证必填字段
-    if (!name || !idNumber || !phone || !address) {
+    if (!name || !idNumber || !notes) {
       toast({
         title: '表单不完整',
-        description: '请填写所有必填字段（姓名、身份证号码、电话号码和联系地址）。',
+        description: '请填写所有必填字段（姓名、证件号码和备注）。',
         variant: 'destructive',
       });
       setSubmitting(false);
@@ -142,6 +148,7 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
     const customerData = {
       name,
       idCardNumber: idNumber,
+      idCardType: idCardType,
       companyName: companyName || null,
       lastYearRevenue: lastYearRevenue ? parseFloat(lastYearRevenue) : null,
       phone: phone || null,
@@ -276,6 +283,7 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
       const appealData = {
         customerName: name,
         idNumber: idNumber,
+        idCardType: idCardType,
         reason: appealReason,
         evidence: appealEvidence.length > 0 ? appealEvidence.join(',') : null,
         jobTitle: jobTitle || '',
@@ -299,9 +307,22 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
       
       let appeal;
       try {
-        appeal = JSON.parse(responseText);
+        // 安全解析JSON响应
+        if (responseText && responseText.trim()) {
+          try {
+            appeal = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('JSON解析失败:', parseError);
+            appeal = { 
+              message: '响应格式错误', 
+              details: `无法解析服务器响应: ${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}` 
+            };
+          }
+        } else {
+          appeal = { message: '服务器返回空响应' };
+        }
       } catch (e) {
-        throw new Error(`解析响应失败: ${responseText}`);
+        appeal = { message: `处理响应失败: ${responseText ? responseText.substring(0, 100) : '空响应'}` };
       }
 
       if (!response.ok) {
@@ -355,6 +376,7 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
     setNotes('');
     setIsDuplicate(null);
     setCustomerStatus(CustomerStatusEnum.FOLLOWING);
+    setIdCardType('CHINA_MAINLAND');
     setAppealReason('');
     setAppealEvidence([]);
   };
@@ -373,12 +395,27 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="idNumber">身份证号码 <span className="text-red-500">*</span></Label>
+              <Label htmlFor="idCardType">证件类型</Label>
+              <Select onValueChange={handleIdCardTypeChange} defaultValue={idCardType}>
+                <SelectTrigger id="idCardType" className="w-full">
+                  <SelectValue placeholder="选择证件类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CHINA_MAINLAND">中国大陆身份证</SelectItem>
+                  <SelectItem value="PASSPORT">护照</SelectItem>
+                  <SelectItem value="HONG_KONG_ID">香港身份证</SelectItem>
+                  <SelectItem value="FOREIGN_ID">其他证件</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="idNumber">证件号码 <span className="text-red-500">*</span></Label>
               <div className="flex space-x-2">
                 <Input
                   type="text"
                   id="idNumber"
-                  placeholder="请输入身份证号码"
+                  placeholder="请输入证件号码"
                   value={idNumber}
                   onChange={e => setIdNumber(e.target.value)}
                   required
@@ -447,14 +484,13 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
             </div>
             
             <div>
-              <Label htmlFor="phone">电话号码 <span className="text-red-500">*</span></Label>
+              <Label htmlFor="phone">电话号码</Label>
               <Input
                 type="tel"
                 id="phone"
                 placeholder="请输入电话号码"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                required
               />
             </div>
             
@@ -494,7 +530,7 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
             </div>
             
             <div>
-              <Label htmlFor="status">客户状态 <span className="text-red-500">*</span></Label>
+              <Label htmlFor="status">客户状态</Label>
               <Select onValueChange={handleCustomerStatusChange} defaultValue={customerStatus}>
                 <SelectTrigger id="status">
                   <SelectValue placeholder="选择状态" />
@@ -511,25 +547,25 @@ export function CustomerAddDialog({ isOpen, onOpenChange, onSuccess }: CustomerA
             </div>
             
             <div className="md:col-span-2">
-              <Label htmlFor="address">联系地址 <span className="text-red-500">*</span></Label>
+              <Label htmlFor="address">联系地址</Label>
               <Textarea
                 id="address"
                 placeholder="请输入联系地址"
                 value={address}
                 onChange={e => setAddress(e.target.value)}
-                required
                 rows={2}
               />
             </div>
             
             <div className="md:col-span-2">
-              <Label htmlFor="notes">备注</Label>
+              <Label htmlFor="notes">备注 <span className="text-red-500">*</span></Label>
               <Textarea
                 id="notes"
                 placeholder="请输入备注信息"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
+                required
               />
             </div>
           </div>

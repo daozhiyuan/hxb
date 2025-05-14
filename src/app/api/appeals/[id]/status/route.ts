@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
 import { AppealStatus, Role } from '@prisma/client';
-import { hasPermission } from '@/lib/auth-helpers';
+import { hasPermission, isSuperAdmin } from '@/lib/auth-helpers';
 
 // 直接定义API配置属性
 export const dynamic = 'force-dynamic';
@@ -24,12 +24,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   try {
     const session = await getServerSession(authOptions);
     
-    // 使用权限辅助函数检查是否有管理员权限
-    if (!hasPermission(session, null, Role.ADMIN)) {
+    // 检查是否是超级管理员
+    const isSuperAdminUser = isSuperAdmin(session);
+    
+    // 使用权限辅助函数检查是否有管理员权限，或者是超级管理员
+    if (!isSuperAdminUser && !hasPermission(session, null, Role.ADMIN)) {
       return NextResponse.json({ message: '未授权操作' }, { status: 403 });
     }
 
-    // 此时session已经通过了hasPermission检查，所以一定非空
+    // 此时session已经通过了权限检查，所以一定非空
     if (!session || !session.user) {
       return NextResponse.json({ message: '未授权操作' }, { status: 403 });
     }

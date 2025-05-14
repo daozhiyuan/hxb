@@ -1,50 +1,22 @@
 /**
- * 身份证号码加密解密测试脚本
+ * 证件号码解密测试工具
+ * 
+ * 此脚本用于测试解密证件号码的功能，特别是处理双层加密的情况。
+ * 用法: node test-decrypt.js <加密字符串>
  */
 
-// 导入所需模块
-const { PrismaClient } = require('@prisma/client');
 const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
+require('dotenv').config();
+const base64js = require('base64-js');
 
-// 手动读取.env文件
-function loadEnv() {
-  try {
-    const envPath = path.resolve(__dirname, '../.env');
-    const content = fs.readFileSync(envPath, 'utf8');
-    const envVars = {};
-    
-    content.split('\n').forEach(line => {
-      // 忽略注释和空行
-      if (line.trim() && !line.startsWith('#')) {
-        const parts = line.split('=');
-        if (parts.length >= 2) {
-          const key = parts[0].trim();
-          const value = parts.slice(1).join('=').trim();
-          // 移除引号
-          envVars[key] = value.replace(/^["']|["']$/g, '');
-        }
-      }
-    });
-    
-    return envVars;
-  } catch (error) {
-    console.error('读取.env文件失败:', error);
-    return {};
-  }
+// 加密相关常量
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY;
+if (!ENCRYPTION_KEY) {
+  console.error('错误: 未找到加密密钥！请确保ENCRYPTION_KEY环境变量已设置。');
+  process.exit(1);
 }
 
-// 加载环境变量
-const env = loadEnv();
-console.log('已加载环境变量');
-
-// 初始化Prisma客户端
-const prisma = new PrismaClient();
-
-// 加密相关函数
-const ENCRYPTION_KEY = env.ENCRYPTION_KEY;
-console.log('加密密钥长度:', ENCRYPTION_KEY ? ENCRYPTION_KEY.length : 0);
+console.log('加密密钥已配置');
 const IV_LENGTH = 16;
 
 // 处理加密密钥，确保长度为32字节
@@ -104,6 +76,22 @@ function getValidKey(key) {
 // 获取有效的密钥
 const key = getValidKey(ENCRYPTION_KEY);
 
+// 检查是否是Base64格式
+function isBase64(text) {
+  if (!text) return false;
+  
+  // 基本Base64格式检查
+  const base64Regex = /^[A-Za-z0-9+/=]+$/;
+  const isBase64Chars = base64Regex.test(text);
+  const isBase64Length = text.length % 4 === 0;
+  
+  // 简单的启发式检查：长度适当（不太短也不太长）且符合Base64特征
+  return text.length > 20 && 
+         text.length < 200 && 
+         isBase64Chars && 
+         isBase64Length;
+}
+
 // 检查加密数据格式是否有效
 function isValidEncryptedFormat(text) {
   if (!text) return false;
@@ -126,29 +114,97 @@ function isValidEncryptedFormat(text) {
   return true;
 }
 
-// 加密身份证号码
-function encryptIdCard(text) {
+// 尝试Base64解码
+function tryDecodeBase64(text) {
   try {
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    let encrypted = cipher.update(text);
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
-    return iv.toString('hex') + ':' + encrypted.toString('hex');
+    if (!isBase64(text)) {
+      return { success: false, result: text, message: '不是有效的Base64格式' };
+    }
+    
+    // 标准化Base64字符串，处理填充问题
+    let normalizedText = text;
+    const paddingNeeded = text.length % 4;
+    if (paddingNeeded > 0) {
+      normalizedText += '='.repeat(4 - paddingNeeded);
+    }
+    
+    try {
+      // 尝试使用Buffer.from解码
+      const decoded = Buffer.from(normalizedText, 'base64').toString('utf8');
+      
+      // 检查解码结果是否有效
+      if (!decoded || decoded.length < 5) {
+        return { success: false, result: text, message: 'Buffer.from解码结果无效' };
+      }
+      
+      if (decoded.match(/[^\x20-\x7E]/g) && decoded.match(/[^\x20-\x7E]/g).length > decoded.length * 0.3) {
+        console.log('Buffer.from方法可能解码不完整，尝试其他方法');
+      } else {
+        return { success: true, result: decoded, message: 'Buffer.from解码成功' };
+      }
+    } catch (bufferError) {
+      console.log('使用Buffer.from解码失败，尝试其他方法');
+    }
+    
+    // 尝试使用base64-js库解码
+    try {
+      // 使用base64-js库解码
+      const byteArray = base64js.toByteArray(normalizedText);
+      const decoded = Buffer.from(byteArray).toString('utf8');
+      
+      if (!decoded || decoded.length < 5) {
+        return { success: false, result: text, message: 'base64-js解码结果无效' };
+      }
+      
+      return { success: true, result: decoded, message: 'base64-js解码成功' };
+    } catch (base64jsError) {
+      console.log('使用base64-js解码失败');
+    }
+    
+    // 如果所有方法都失败，尝试直接解析
+    try {
+      // 直接将输入视为字符串，进行进一步处理
+      console.log('尝试解析输入作为字符串');
+      
+      // 检查是否看起来像特定的证件号码格式
+      if (/^\d{18}$/.test(text) || /^\d{17}[Xx]$/.test(text)) {
+        return { success: true, result: text, message: '输入看起来是身份证格式' };
+      }
+      
+      if (/^[A-Z]{1,2}\d{7,8}$/.test(text)) {
+        return { success: true, result: text, message: '输入看起来是护照格式' };
+      }
+      
+      if (/^[A-Z]\d{6}(\([0-9A]\))?$/.test(text)) {
+        return { success: true, result: text, message: '输入看起来是香港身份证格式' };
+      }
+      
+      // 如果输入足够短，可能已经是解密后的结果
+      if (text.length >= 5 && text.length <= 30) {
+        return { success: true, result: text, message: '输入长度适中，可能是有效证件号码' };
+      }
+    } catch (directError) {
+      console.log('直接解析失败');
+    }
+    
+    return { success: false, result: text, message: '所有解码方法都失败' };
   } catch (error) {
-    console.error('加密身份证号码失败:', error);
-    throw new Error('加密失败，请稍后重试');
+    return { success: false, result: text, message: `Base64解码出错: ${error.message}` };
   }
 }
 
-// 解密身份证号码
+// 解密证件号码
 function decryptIdCard(text) {
   try {
-    if (!text) return '';
+    if (!text) return { success: false, result: '', message: '输入为空' };
     
     // 检查格式是否有效
     if (!isValidEncryptedFormat(text)) {
-      console.warn('数据格式不符合加密标准，可能是未加密数据或格式错误');
-      return '格式错误，请重新设置';
+      return {
+        success: false,
+        result: text,
+        message: '数据格式不符合加密标准，可能是未加密数据或格式错误'
+      };
     }
     
     // 正常解密流程
@@ -157,117 +213,159 @@ function decryptIdCard(text) {
     const encryptedText = Buffer.from(textParts[1], 'hex');
     
     if (iv.length !== IV_LENGTH) {
-      console.warn(`IV长度不正确: ${iv.length}，预期: ${IV_LENGTH}`);
-      return '格式错误，请重新设置';
+      return {
+        success: false,
+        result: text,
+        message: `IV长度不正确: ${iv.length}，预期: ${IV_LENGTH}`
+      };
     }
     
+    try {
     const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
     let decrypted = decipher.update(encryptedText);
     decrypted = Buffer.concat([decrypted, decipher.final()]);
     
-    const result = decrypted.toString();
-    
-    // 验证解密结果是否有效
-    if (!result || result.length < 5) {
-      console.error('解密结果无效或太短');
-      return '解密结果无效，请重新设置';
-    }
-    
-    return result;
-  } catch (error) {
-    console.error('解密身份证号码失败:', error);
-    return '解密失败 - 请重新设置';
-  }
-}
-
-/**
- * 测试指定客户的身份证解密
- */
-async function testDecrypt(customerId) {
-  try {
-    console.log(`测试客户ID ${customerId} 的身份证解密...`);
-    
-    // 获取客户数据
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
-      select: {
-        id: true,
-        name: true,
-        idCardNumberEncrypted: true
-      }
-    });
-    
-    if (!customer) {
-      console.log(`客户ID ${customerId} 不存在`);
-      return;
-    }
-    
-    console.log(`客户ID: ${customer.id}`);
-    console.log(`姓名: ${customer.name}`);
-    console.log(`加密数据: ${customer.idCardNumberEncrypted}`);
-    
-    // 检查加密格式
-    console.log(`\n加密格式有效: ${isValidEncryptedFormat(customer.idCardNumberEncrypted)}`);
-    
-    // 尝试解密
-    try {
-      const decrypted = decryptIdCard(customer.idCardNumberEncrypted);
-      console.log(`解密结果(部分隐藏): ${decrypted.substring(0, 6)}********${decrypted.substring(14)}`);
-      console.log(`解密结果(完整号码): ${decrypted}`);
+      const result = decrypted.toString('utf8');
       
-      // 验证是否为有效身份证
-      const idCardPattern = /^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dX]$/i;
-      
-      // 支持多种证件类型的验证
-      let isValidId = false;
-      
-      // 1. 中国大陆身份证
-      if (idCardPattern.test(decrypted)) {
-        isValidId = true;
-      }
-      // 2. 护照 - 1-2位字母 + 7-8位数字
-      else if (/^[A-Z]{1,2}\d{7,8}$/.test(decrypted)) {
-        isValidId = true;
-      }
-      // 3. 港澳通行证 - H或M + 8位数字
-      else if (/^[HM]\d{8}$/.test(decrypted)) {
-        isValidId = true;
-      }
-      // 4. 台湾通行证 - T + 8位数字
-      else if (/^T\d{8}$/.test(decrypted)) {
-        isValidId = true;
-      }
-      // 5. 外国人永久居留证 - 字母 + 数字组合
-      else if (/^[A-Z]\d{7,9}$/.test(decrypted)) {
-        isValidId = true;
-      }
-      
-      console.log(`身份证格式是否有效: ${isValidId}`);
-      
-      return decrypted;
+      return { 
+        success: true,
+        result,
+        message: '解密成功'
+      };
     } catch (error) {
-      console.error('解密过程出错:', error);
-      return null;
+      return {
+        success: false,
+        result: text,
+        message: `解密处理出错: ${error.message}`
+      };
     }
   } catch (error) {
-    console.error(`测试过程中发生错误:`, error);
-  } finally {
-    await prisma.$disconnect();
+    return {
+      success: false,
+      result: text,
+      message: `解密过程出错: ${error.message}`
+    };
   }
 }
 
-// 测试多个客户ID
-async function runTests() {
-  // 测试不同的客户ID
-  await testDecrypt(1);
-  console.log('\n---------------------\n');
+// 完整的解密流程，模拟产品中的解密逻辑
+function fullDecrypt(encryptedText) {
+  console.log('执行完整解密流程...');
   
-  await testDecrypt(13);
-  console.log('\n---------------------\n');
-  
-  // 测试特殊处理的客户ID 21
-  await testDecrypt(21);
+  try {
+    if (!encryptedText) {
+      console.log('输入为空');
+      return '';
+    }
+    
+    // 处理普通证件号码
+    // 可能是证件号码格式，尝试匹配
+    const idCard18Regex = /^\d{17}[\dXx]$/i;
+    const passportRegex = /^[A-Z]{1,2}\d{7,8}$/i;
+    const hkIdRegex = /^[A-Z][0-9]{6}(\([0-9A]\))?$/i;
+    
+    if (idCard18Regex.test(encryptedText) || 
+        passportRegex.test(encryptedText) || 
+        hkIdRegex.test(encryptedText) ||
+        (encryptedText.length >= 5 && encryptedText.length <= 30)) {
+      console.log('输入看起来已经是证件号码格式，无需解密');
+      return encryptedText;
+    }
+    
+    // 首先检查是否是Base64格式
+    if (isBase64(encryptedText)) {
+      console.log('检测到Base64格式，尝试解码');
+      const base64Result = tryDecodeBase64(encryptedText);
+      
+      if (base64Result.success) {
+        console.log(`Base64解码成功: ${base64Result.message}`);
+        console.log(`解码结果长度: ${base64Result.result.length} 字符`);
+        
+        // 打印解码结果的字节表示
+        console.log('解码结果的字节表示:');
+        const buffer = Buffer.from(base64Result.result);
+        let byteString = '';
+        for (let i = 0; i < Math.min(buffer.length, 30); i++) {
+          byteString += buffer[i].toString(16).padStart(2, '0') + ' ';
+        }
+        if (buffer.length > 30) byteString += '...';
+        console.log(byteString);
+        
+        // 检查解码结果是否是加密格式
+        if (isValidEncryptedFormat(base64Result.result)) {
+          console.log('解码结果是加密格式，继续解密');
+          const decryptResult = decryptIdCard(base64Result.result);
+          
+          if (decryptResult.success) {
+            return decryptResult.result;
+          } else {
+            console.log(`解密失败: ${decryptResult.message}`);
+            return base64Result.result;
+          }
+        } else {
+          // 不是加密格式，直接返回解码结果
+          return base64Result.result;
+        }
+      } else {
+        console.log(`Base64解码失败: ${base64Result.message}`);
+      }
+    }
+    
+    // 如果不是Base64或解码失败，检查是否是标准加密格式
+    if (isValidEncryptedFormat(encryptedText)) {
+      console.log('检测到标准加密格式，尝试解密');
+      const decryptResult = decryptIdCard(encryptedText);
+      
+      if (decryptResult.success) {
+        console.log('第一层解密成功');
+        const firstDecrypted = decryptResult.result;
+        
+        // 检查解密结果是否是Base64格式
+        if (isBase64(firstDecrypted)) {
+          console.log('检测到Base64格式的解密结果，尝试二次解码');
+          const base64Result = tryDecodeBase64(firstDecrypted);
+          
+          if (base64Result.success) {
+            console.log('Base64解码成功，双层加密处理完成');
+            return base64Result.result;
+          } else {
+            console.log(`Base64解码失败: ${base64Result.message}，返回第一层解密结果`);
+          }
+        }
+        
+        // 如果不是Base64或解码失败，返回第一层解密结果
+        return firstDecrypted;
+      } else {
+        console.log(`解密失败: ${decryptResult.message}`);
+      }
+    }
+    
+    // 所有处理都失败，返回原始输入
+    console.log('无法解密，返回原始输入');
+    return encryptedText;
+  } catch (error) {
+    console.error('解密过程出错:', error);
+    return '解密出错';
+  }
 }
 
-// 执行测试
-runTests(); 
+// 主函数
+function main() {
+  // 获取命令行参数
+  const args = process.argv.slice(2);
+  
+  if (args.length < 1) {
+    console.log('用法: node test-decrypt.js <加密字符串>');
+    process.exit(1);
+  }
+  
+  const encryptedText = args[0];
+  console.log(`输入的加密字符串: ${encryptedText}`);
+  
+  // 解密并显示结果
+  const decryptedText = fullDecrypt(encryptedText);
+  console.log(`\n解密结果: ${decryptedText}`);
+}
+
+// 执行主函数
+main(); 

@@ -73,6 +73,7 @@ export async function POST(request: Request) {
     
     // 4. 解密数据
     try {
+      // 移除直接返回安全值的检查，使所有数据都尝试解密
       const decryptedText = decryptSecureIdCard(encryptedText);
       
       // 检查解密结果的合理性
@@ -120,23 +121,86 @@ function decryptSecureIdCard(text: string): string {
       if (typeof decryptIdCardSimple === 'function') {
         // 优先使用decryptIdCardSimple函数进行解密
         const result = decryptIdCardSimple(text);
-        if (result && !result.includes('[解密失败') && !result.includes('[解密出错]')) {
+        if (result && !result.includes('[解密失败') && !result.includes('[解密出错]') && result !== text) {
           console.log('成功使用decryptIdCardSimple函数解密');
           return result;
         } else {
-          console.log('decryptIdCardSimple函数解密失败，尝试本地解密方法');
+          console.log('decryptIdCardSimple函数解密失败或返回原文，尝试本地解密方法');
         }
       }
     } catch (importError) {
-      console.error('导入decryptIdCardSimple函数失败，使用本地解密方法');
+      console.error('导入decryptIdCardSimple函数失败，使用本地解密方法', importError);
     }
     
-    // 特殊处理tkl1开头的格式或其他特殊格式
-    if (text.startsWith('tkl1') || text.includes('/9xy') || (text.length >= 60 && /^[A-Za-z0-9+/=_-]+$/.test(text))) {
+    // 特殊处理tkl1格式 - 尝试提取实际内容而不是直接返回替代值
+    if (text.startsWith('tkl1')) {
       try {
-        console.log('检测到特殊加密格式，尝试特殊解密方法');
+        console.log('检测到tkl1格式，尝试解析实际内容');
+        // 提取tkl1后面的部分，可能包含实际数据
+        const payload = text.substring(4);
         
-        // 1. 将URL安全的Base64转回标准Base64
+        // 尝试Base64解码
+        if (payload && payload.length > 0) {
+          try {
+            // 将可能的Base64内容标准化
+            let standardBase64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+            // 添加必要的填充
+            while (standardBase64.length % 4 !== 0) {
+              standardBase64 += '=';
+            }
+            
+            // 尝试解码
+            const buffer = Buffer.from(standardBase64, 'base64');
+            const decoded = buffer.toString('utf8');
+            
+            // 验证解码结果是否看起来像身份证号
+            if (decoded && /^\d{17}[\dXx]$/i.test(decoded)) {
+              console.log('成功从tkl1格式解析出身份证号');
+              return decoded;
+            }
+            
+            // 尝试作为加密数据进一步解密
+            if (decoded && decoded.includes(':')) {
+              try {
+                const decodedParts = decoded.split(':');
+                if (decodedParts.length === 2) {
+                  const iv = Buffer.from(decodedParts[0], 'hex');
+                  const encryptedData = Buffer.from(decodedParts[1], 'hex');
+                  
+                  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+                  let decrypted = decipher.update(encryptedData);
+                  decrypted = Buffer.concat([decrypted, decipher.final()]);
+                  
+                  const result = decrypted.toString();
+                  if (result && /^\d{17}[\dXx]$/i.test(result)) {
+                    console.log('成功从tkl1嵌套格式解析出身份证号');
+                    return result;
+                  }
+                }
+              } catch (nestedError) {
+                console.log('tkl1嵌套格式解析失败');
+              }
+            }
+          } catch (base64Error) {
+            console.log('tkl1格式Base64解析失败');
+          }
+        }
+        
+        // 如果无法解析，则记录但仍然返回原始文本以便超级管理员查看
+        console.log('无法解析tkl1格式，返回原始数据供管理员检查');
+        return `[tkl1格式] ${text}`;
+      } catch (tkl1Error) {
+        console.error('处理tkl1格式时发生错误:', tkl1Error);
+        return `[tkl1格式解析错误] ${text}`;
+      }
+    }
+    
+    // 特殊处理其他特殊格式 - 也尝试实际解密而不是替代
+    if (text.includes('/9xy') || (text.length >= 60 && /^[A-Za-z0-9+/=_-]+$/.test(text))) {
+      try {
+        console.log('检测到特殊加密格式，尝试解析');
+        
+        // 将URL安全的Base64转回标准Base64
         let standardBase64 = text;
         // 替换URL安全字符为标准Base64字符
         standardBase64 = standardBase64.replace(/-/g, '+').replace(/_/g, '/');
@@ -145,12 +209,22 @@ function decryptSecureIdCard(text: string): string {
           standardBase64 += '=';
         }
         
-        // 2. 将Base64转回二进制数据
+        // 将Base64转回二进制数据
         const buffer = Buffer.from(standardBase64, 'base64');
         
         // 尝试多种解密方案
+        // 首先尝试直接解码为文本
+        try {
+          const directDecoded = buffer.toString('utf8');
+          if (directDecoded && /^\d{17}[\dXx]$/i.test(directDecoded)) {
+            console.log('特殊格式直接解码成功');
+            return directDecoded;
+          }
+        } catch (directDecodeError) {
+          console.log('特殊格式直接解码失败');
+        }
         
-        // 3. 首先尝试6字节IV方案（较新格式）
+        // 尝试6字节IV方案（较新格式）
         if (buffer.length > 6) {
           try {
             const shortIv = buffer.slice(0, 6);
@@ -173,137 +247,30 @@ function decryptSecureIdCard(text: string): string {
           }
         }
         
-        // 4. 尝试多种偏移量（因为加密时可能有自定义头部）
-        for (let offset = 0; offset <= 8; offset++) {
-          if (buffer.length > offset + 16) {
-            try {
-              // 提取不同偏移量的IV
-              const iv = buffer.slice(offset, offset + 16);
-              const encryptedData = buffer.slice(offset + 16);
-              
-              // 使用当前密钥尝试解密
-              const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-              let decrypted = decipher.update(encryptedData);
-              decrypted = Buffer.concat([decrypted, decipher.final()]);
-              
-              const result = decrypted.toString();
-              
-              // 验证解密结果是否合理（是否为可打印字符）
-              if (result && result.length >= 5 && /^[\x20-\x7E]+$/.test(result)) {
-                console.log(`特殊格式解密成功(偏移=${offset}): ${result.substring(0, 3)}***`);
-                return result;
-              }
-            } catch (offsetError) {
-              // 继续尝试下一个偏移量
-            }
-          }
-        }
-        
-        // 5. 尝试使用固定IV和不同的解密模式
-        const fixedIv = Buffer.alloc(16); // 全零IV
-        
-        // 尝试不同的解密模式
-        const modes = ['aes-256-cbc', 'aes-256-ecb', 'aes-192-cbc'];
-        for (const mode of modes) {
-          try {
-            if (mode.includes('ecb')) {
-              // ECB模式不需要IV
-              const decipher = crypto.createDecipheriv(mode as any, 
-                mode.includes('192') ? key.slice(0, 24) : key, 
-                null as any);
-              let decrypted = decipher.update(buffer);
-              decrypted = Buffer.concat([decrypted, decipher.final()]);
-              
-              const result = decrypted.toString();
-              
-              // 验证解密结果是否合理
-              if (result && result.length >= 5 && /^[\x20-\x7E]+$/.test(result)) {
-                console.log(`特殊格式解密成功(${mode}模式): ${result.substring(0, 3)}***`);
-                return result;
-              }
-            } else {
-              // CBC模式需要IV
-              const decipher = crypto.createDecipheriv(mode as any, 
-                mode.includes('192') ? key.slice(0, 24) : key, 
-                fixedIv);
-              let decrypted = decipher.update(buffer);
-              decrypted = Buffer.concat([decrypted, decipher.final()]);
-              
-              const result = decrypted.toString();
-              
-              // 验证解密结果是否合理
-              if (result && result.length >= 5 && /^[\x20-\x7E]+$/.test(result)) {
-                console.log(`特殊格式解密成功(${mode}模式+固定IV): ${result.substring(0, 3)}***`);
-                return result;
-              }
-            }
-          } catch (modeError) {
-            // 继续尝试下一个模式
-          }
-        }
-        
-        // 6. 对于tkl1特定格式，返回一个合理的模拟结果，避免显示错误
-        if (text.startsWith('tkl1')) {
-          console.log('无法解密tkl1特殊格式，返回安全掩码');
-          return '11010119********98'; // 北京市模拟身份证号掩码格式
-        }
-        
-        console.error('所有特殊格式解密方案均失败');
-        return '解密失败 - 特殊格式无法解密';
-      } catch (specialFormatError) {
-        console.error('特殊格式解密失败:', specialFormatError);
-        return '解密失败 - 特殊加密格式';
+        // 如果所有方法都失败，返回原始文本供管理员查看
+        console.log('无法解析特殊格式，返回原始数据供管理员检查');
+        return `[特殊格式] ${text}`;
+      } catch (specialError) {
+        console.error('处理特殊格式时发生错误:', specialError);
+        return `[特殊格式解析错误] ${text}`;
       }
     }
     
-    // 检查是否是URL安全的Base64格式(使用-和_替代+和/)
-    if (/^[A-Za-z0-9_-]+$/.test(text) && !text.includes(':')) {
+    // 尝试使用标准AES-CBC解密
+    if (text.includes(':')) {
       try {
-        console.log('检测到URL安全的Base64格式，尝试解密');
-        
-        // 1. 将URL安全的Base64转回标准Base64
-        let standardBase64 = text;
-        // 替换URL安全字符为标准Base64字符
-        standardBase64 = standardBase64.replace(/-/g, '+').replace(/_/g, '/');
-        // 添加可能缺少的填充
-        while (standardBase64.length % 4 !== 0) {
-          standardBase64 += '=';
+        // 标准格式: IV:EncryptedHex
+        const parts = text.split(':');
+        if (parts.length !== 2) {
+          return '格式错误: 不符合IV:EncryptedHex标准格式';
         }
         
-        // 2. 将Base64转回二进制数据
-        const buffer = Buffer.from(standardBase64, 'base64');
+        const iv = Buffer.from(parts[0], 'hex');
+        const encryptedData = Buffer.from(parts[1], 'hex');
         
-        // 3. 根据加密方案提取IV和加密数据
-        // 可能是6字节IV+数据或16字节IV+数据
-        if (buffer.length <= 6) {
-          console.error('Base64数据无效：长度不足');
-          return '解密失败 - 数据长度不足';
+        if (iv.length !== IV_LENGTH) {
+          return `格式错误: IV长度不正确 (预期${IV_LENGTH}字节，实际${iv.length}字节)`;
         }
-        
-        // 先尝试6字节IV方案（新格式）
-        try {
-          const iv = buffer.slice(0, 6);
-          const paddedIv = Buffer.concat([iv, Buffer.alloc(10)]); // 填充到16字节
-          const encryptedData = buffer.slice(6);
-          
-          const decipher = crypto.createDecipheriv('aes-256-cbc', key, paddedIv);
-          let decrypted = decipher.update(encryptedData);
-          decrypted = Buffer.concat([decrypted, decipher.final()]);
-          
-          const result = decrypted.toString();
-          
-          // 如果结果看起来合理，返回
-          if (result && result.length >= 5) {
-            console.log(`解密成功(6字节IV): ${result.substring(0, 3)}***`);
-            return result;
-          }
-        } catch (shortIvError) {
-          console.log('6字节IV方案解密失败，尝试16字节IV方案');
-        }
-        
-        // 如果6字节IV失败，尝试16字节IV方案（老格式）
-        const iv = buffer.slice(0, 16);
-        const encryptedData = buffer.slice(16);
         
         const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
         let decrypted = decipher.update(encryptedData);
@@ -311,74 +278,58 @@ function decryptSecureIdCard(text: string): string {
         
         const result = decrypted.toString();
         
-        // 验证解密结果是否合理
-        if (!result || result.length < 5) {
-          console.error('解密结果无效或太短');
-          return '解密结果无效';
+        if (!result) {
+          return '解密结果为空';
         }
         
-        console.log(`解密成功(16字节IV): ${result.substring(0, 3)}***`);
+        console.log(`标准格式解密成功: ${result.substring(0, 3)}***`);
         return result;
-      } catch (error) {
-        console.error('解密Base64格式数据失败:', error);
-        return '解密失败 - Base64格式';
+      } catch (standardError: any) {
+        console.error('标准格式解密失败:', standardError);
+        return `标准格式解密失败: ${standardError.message}`;
       }
     }
     
-    // 检查是否是标准IV:加密文本格式
-    if (text.includes(':')) {
-      try {
-        console.log('检测到标准格式(IV:加密文本)，尝试解密');
+    // 尝试Base64解密
+    try {
+      if (/^[A-Za-z0-9+/=]+$/.test(text)) {
+        const buffer = Buffer.from(text, 'base64');
         
-        // 分割IV和加密数据
-        const parts = text.split(':');
-        
-        // 确保有两部分
-        if (parts.length !== 2) {
-          return '格式错误 - 无效的分隔';
+        if (buffer.length <= IV_LENGTH) {
+          return 'Base64格式错误: 数据长度不足';
         }
         
-        const iv = Buffer.from(parts[0], 'hex');
-        const encryptedText = Buffer.from(parts[1], 'hex');
-        
-        // 检查IV长度
-        if (iv.length !== IV_LENGTH) {
-          console.warn(`IV长度不正确: ${iv.length}，预期: ${IV_LENGTH}`);
-          return '格式错误 - IV长度无效';
-        }
+        const iv = buffer.slice(0, IV_LENGTH);
+        const encryptedData = buffer.slice(IV_LENGTH);
         
         const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-        let decrypted = decipher.update(encryptedText);
+        let decrypted = decipher.update(encryptedData);
         decrypted = Buffer.concat([decrypted, decipher.final()]);
         
         const result = decrypted.toString();
         
-        // 验证解密结果是否有效
-        if (!result || result.length < 5) {
-          console.error('解密结果无效或太短');
-          return '解密结果无效';
+        if (!result) {
+          return 'Base64解密结果为空';
         }
         
-        console.log(`解密成功(标准格式): ${result.substring(0, 3)}***`);
+        console.log(`Base64格式解密成功: ${result.substring(0, 3)}***`);
         return result;
-      } catch (error) {
-        console.error('解密标准格式数据失败:', error);
-        return '解密失败 - 标准格式';
       }
+    } catch (base64Error: any) {
+      console.error('Base64格式解密失败:', base64Error);
+      return `Base64格式解密失败: ${base64Error.message}`;
     }
     
-    // 如果输入可能是明文证件号，直接返回
-    if (/^\d{17}[\dX]$/i.test(text) || // 中国身份证
-        /^[A-Z]{1,2}\d{7,8}$/i.test(text) || // 护照
-        /^[A-Z][0-9]{6}(\([0-9A]\))?$/i.test(text)) { // 香港身份证
-      console.log('输入看起来已经是明文证件号码');
+    // 检查是否是明文身份证号
+    if (/^\d{17}[\dXx]$/i.test(text)) {
+      console.log('输入内容符合身份证号格式，可能是明文');
       return text;
     }
     
-    // 如果都不是，返回错误
-    return '格式错误 - 未识别的加密格式';
-  } catch (error) {
-    console.error('解密过程中发生未知错误:', error);
-    return '解密失败 - 未知错误';
+    // 所有解密方法都失败，返回原始加密文本以便管理员检查
+    return `[无法解密，未知格式] ${text}`;
+  } catch (error: any) {
+    console.error('解密函数发生错误:', error);
+    return `解密出错: ${error.message}`;
   }
 } 

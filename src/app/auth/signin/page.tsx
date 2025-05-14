@@ -34,4 +34,7 @@ export default function SignInPage() {
       </Suspense>
     </div>
   );
-} 
+}
+
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic'; 

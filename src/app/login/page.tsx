@@ -33,10 +33,14 @@ function LoginContent() {
         case 'SessionRequired':
           errorMessage = '请先登录';
           break;
+        case 'SessionCorrupted':
+          errorMessage = '会话已损坏，请重新登录';
+          break;
         default:
           errorMessage = `登录失败: ${errorParam}`;
       }
       
+      console.log(`[Login] 检测到错误参数: ${errorParam}, 显示错误: ${errorMessage}`);
       setError(errorMessage);
       
       toast({
@@ -61,6 +65,8 @@ function LoginContent() {
         throw new Error('请输入邮箱和密码');
       }
 
+      console.log(`[Login] 尝试登录用户: ${email}`);
+
       const result = await signIn('credentials', {
         email,
         password,
@@ -68,7 +74,15 @@ function LoginContent() {
         callbackUrl: callbackUrl
       });
 
-      if (result?.error) {
+      console.log(`[Login] 登录结果:`, result);
+
+      if (!result) {
+        console.error('[Login] 登录失败: 未收到响应');
+        throw new Error('登录请求失败，请稍后重试');
+      }
+
+      if (result.error) {
+        console.error(`[Login] 登录错误: ${result.error}`);
         toast({
           variant: 'destructive',
           title: '登录失败',
@@ -78,6 +92,7 @@ function LoginContent() {
         return;
       }
 
+      console.log(`[Login] 登录成功, 准备跳转到: ${result.url || callbackUrl}`);
       toast({
         title: '登录成功',
         description: '正在跳转...',
@@ -85,11 +100,12 @@ function LoginContent() {
 
       // 使用setTimeout延迟跳转，确保toast能够显示
       setTimeout(() => {
-        router.push(callbackUrl);
+        router.push(result.url || callbackUrl);
         router.refresh();
       }, 500);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '登录过程中发生错误';
+      console.error(`[Login] 异常: ${errorMessage}`);
       setError(errorMessage);
       toast({
         variant: 'destructive',
@@ -162,4 +178,7 @@ export default function LoginPage() {
     </div>
   );
 }
+
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic';
 

@@ -115,11 +115,20 @@ export function CustomerList() {
           console.error("API错误:", errorData);
           throw new Error(errorData.message || '获取客户列表失败');
         }
-        const data: PaginatedResponse = await response.json();
+        const responseJson = await response.json();
+        const data: PaginatedResponse | undefined = responseJson.data;
         console.log("获取到的客户数据:", data);
-        setCustomers(data.data || []);
-        setTotalPages(data.totalPages || data.pagination?.totalPages || 1);
-        setTotalItems(data.total || data.pagination?.total || 0);
+
+        if (!data) {
+          setCustomers([]);
+          setTotalPages(1);
+          setTotalItems(0);
+          return;
+        }
+
+        setCustomers(Array.isArray(data.data) ? data.data : []);
+        setTotalPages(data.pagination?.totalPages ?? data.totalPages ?? 1);
+        setTotalItems(data.pagination?.total ?? data.total ?? 0);
         
         // 自动保存功能
         if (autoSave && data.data && data.data.length > 0) {

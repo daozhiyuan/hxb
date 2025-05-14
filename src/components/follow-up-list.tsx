@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { User, MessageCircle, Phone, Calendar, Mail, CalendarIcon, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { zhCN } from 'date-fns/locale';
 
 interface FollowUp {
   id: number;
@@ -35,10 +36,28 @@ export function FollowUpList({ customerId }: FollowUpListProps) {
   const pageSize = 10;
 
   useEffect(() => {
-    fetchFollowUps();
+    console.log(`[FollowUpList] 组件挂载，客户ID: ${customerId}，类型: ${typeof customerId}`);
+  }, [customerId]);
+
+  useEffect(() => {
+    if (customerId && !isNaN(Number(customerId))) {
+      fetchFollowUps();
+    } else {
+      console.error('无效的客户ID:', customerId, typeof customerId);
+      setError(`客户ID无效 (${customerId})，无法加载跟进记录`);
+      setIsLoading(false);
+    }
   }, [customerId]);
 
   const fetchFollowUps = async (nextPage = 1) => {
+    if (!customerId || isNaN(Number(customerId))) {
+      console.error('尝试请求跟进记录时客户ID无效:', customerId);
+      setError('客户ID无效，无法加载跟进记录');
+      setIsLoading(false);
+      setIsLoadingMore(false);
+      return;
+    }
+    
     const isInitialLoad = nextPage === 1;
     
     if (isInitialLoad) {
@@ -50,14 +69,17 @@ export function FollowUpList({ customerId }: FollowUpListProps) {
     setError('');
 
     try {
+      console.log(`[FollowUpList] 获取客户ID ${customerId} 的跟进记录, 页码: ${nextPage}`);
       const response = await fetch(`/api/crm/customers/${customerId}/follow-ups?page=${nextPage}&pageSize=${pageSize}`);
       if (!response.ok) {
         throw new Error('获取跟进记录失败');
       }
       
       const result = await response.json();
+      console.log(`[FollowUpList] 获取到的跟进记录响应:`, result);
+      
       const data = result.data || [];
-      const pagination = result.pagination || { totalPages: 0 };
+      const pagination = result.pagination || { totalPages: 0, total: 0 };
       
       if (isInitialLoad) {
         setFollowUps(data);
@@ -124,6 +146,32 @@ export function FollowUpList({ customerId }: FollowUpListProps) {
         return 'bg-amber-100 text-amber-800 border-amber-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-300';
+    }
+  };
+
+  const formatDateSafe = (dateString: string | null | undefined, formatPattern = 'yyyy-MM-dd HH:mm'): string => {
+    if (!dateString) return '-';
+    
+    try {
+      console.log(`[FollowUpList] 尝试格式化日期: ${dateString}, 类型: ${typeof dateString}`);
+      
+      const date = new Date(dateString);
+      
+      if (!isValid(date)) {
+        console.warn(`[FollowUpList] 无效的日期值: ${dateString}, 类型: ${typeof dateString}`);
+        return String(dateString);
+      }
+      
+      const year = date.getFullYear();
+      if (year < 1970 || year > 2100) {
+        console.warn(`[FollowUpList] 日期年份超出合理范围: ${year}, 原始值: ${dateString}`);
+        return String(dateString);
+      }
+      
+      return format(date, formatPattern, { locale: zhCN });
+    } catch (error) {
+      console.error('[FollowUpList] 日期格式化错误:', error, dateString, typeof dateString);
+      return String(dateString || '-');
     }
   };
 
@@ -196,10 +244,10 @@ export function FollowUpList({ customerId }: FollowUpListProps) {
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4 text-primary" />
                   <span className="font-medium text-sm">
-                    {followUp.createdBy.name || followUp.createdBy.email.split('@')[0]}
+                    {followUp.createdBy?.name || (followUp.createdBy?.email ? followUp.createdBy.email.split('@')[0] : '未知用户')}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {format(new Date(followUp.createdAt), 'yyyy-MM-dd HH:mm')}
+                    {formatDateSafe(followUp.createdAt)}
                   </span>
                 </div>
                 <div>

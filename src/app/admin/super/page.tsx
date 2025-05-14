@@ -24,6 +24,9 @@ interface Customer {
   registeredByPartnerId: number;
 }
 
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic';
+
 export default function SuperAdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();

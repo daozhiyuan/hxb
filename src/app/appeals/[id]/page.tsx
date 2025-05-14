@@ -1,3 +1,6 @@
+// 禁用静态生成和 RSC 预取
+export const dynamic = 'force-dynamic';
+
 // 服务器组件用于生成静态参数
 // 在静态导出模式下为动态路由生成的参数
 // 这告诉 Next.js 在构建时生成这些路径
