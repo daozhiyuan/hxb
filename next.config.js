@@ -3,7 +3,7 @@ const nextConfig = {
   // 修改为服务端渲染模式，不进行静态页面生成
   output: 'standalone',
   
-  // 修改headers配置，删除不支持的browsing-topics
+  // 修改headers配置
   async headers() {
     return [
       {
@@ -15,7 +15,7 @@ const nextConfig = {
           },
           {
             key: 'X-Frame-Options',
-            value: 'DENY'
+            value: 'SAMEORIGIN'
           },
           {
             key: 'X-XSS-Protection',
@@ -74,6 +74,24 @@ const nextConfig = {
   
   // 外部包配置
   transpilePackages: ["@next/font", "next-auth"],
+
+  // 添加重写规则
+  async rewrites() {
+    return [
+      {
+        source: '/dashboard',
+        destination: '/dashboard',
+      },
+      {
+        source: '/api/:path*',
+        destination: '/api/:path*',
+      },
+      {
+        source: '/_next/:path*',
+        destination: '/_next/:path*',
+      }
+    ]
+  }
 }
 
 export default nextConfig

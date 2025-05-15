@@ -12,7 +12,18 @@ import { Role } from '@prisma/client';
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+
+  // 添加调试日志
+  console.log('[Dashboard] 会话状态:', {
+    status,
+    session: session ? {
+      id: session.user?.id,
+      email: session.user?.email,
+      role: session.user?.role,
+      name: session.user?.name
+    } : null
+  });
 
   // 使用 ClientProvider 处理认证、加载状态和路由跳转
   return (

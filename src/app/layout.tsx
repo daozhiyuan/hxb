@@ -30,13 +30,15 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <head />
-      <body className={`${inter.className} flex min-h-screen flex-col`}>
+      <body className={inter.className}>
         <Providers>
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
-          <Toaster />
+          <div className="flex min-h-screen flex-col">
+            <main className="flex-1">
+              {children}
+            </main>
+            <Footer />
+            <Toaster />
+          </div>
         </Providers>
       </body>
     </html>

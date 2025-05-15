@@ -80,11 +80,25 @@ export function ClientProvider({
   // 处理认证重定向
   useEffect(() => {
     // 只有在已挂载且会话状态已确定且没有正在进行修复的情况下进行处理
-    if (!mounted || status === 'loading' || isSessionRepairing) return;
+    if (!mounted || status === 'loading' || isSessionRepairing) {
+      console.log('[ClientProvider] 等待挂载或会话加载:', { mounted, status, isSessionRepairing });
+      return;
+    }
+
+    console.log('[ClientProvider] 会话状态:', {
+      status,
+      requireAuth,
+      session: session ? {
+        id: session.user?.id,
+        email: session.user?.email,
+        role: session.user?.role
+      } : null
+    });
 
     // 需要认证但未认证时重定向到登录页
     if (requireAuth && status === 'unauthenticated') {
-      router.replace('/login');
+      console.log('[ClientProvider] 未认证，重定向到登录页');
+      window.location.href = '/login';
       return;
     }
 
@@ -95,28 +109,31 @@ export function ClientProvider({
       const userId = session?.user?.id;
       
       // 输出调试信息，帮助排查会话问题
-      console.log('[ClientProvider] 认证会话信息:',
-        JSON.stringify({
-          userIdType: typeof userId,
-          userRole
-        }, null, 2)
-      );
+      console.log('[ClientProvider] 认证会话信息:', {
+        userId,
+        userRole,
+        sessionAttempts,
+        isSessionRepairing
+      });
       
       // 如果用户ID无效且需要认证，则可能是会话损坏
       if (requireAuth && !userId && sessionAttempts >= 3) {
         console.error('[ClientProvider] 用户已认证但ID缺失，会话可能损坏');
+        window.location.href = '/login';
         return;
       }
       
       // 需要超级管理员权限但用户不是超级管理员
       if (requireSuperAdmin && userRole !== 'SUPER_ADMIN') {
-        router.replace('/unauthorized');
+        console.log('[ClientProvider] 需要超级管理员权限，重定向到未授权页面');
+        window.location.href = '/unauthorized';
         return;
       }
       
       // 需要管理员权限但用户既不是管理员也不是超级管理员
       if (requireAdmin && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-        router.replace('/unauthorized');
+        console.log('[ClientProvider] 需要管理员权限，重定向到未授权页面');
+        window.location.href = '/unauthorized';
         return;
       }
     }

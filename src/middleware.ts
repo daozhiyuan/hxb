@@ -116,7 +116,8 @@ export async function middleware(request: NextRequest) {
 
   // 如果用户未登录，重定向到登录页
   if (!token) {
-    const url = new URL('/login', request.url);
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3005';
+    const url = new URL('/login', baseUrl);
     url.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(url);
   }

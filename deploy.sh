@@ -51,7 +51,7 @@ ENCRYPTION_KEY=$ENCRYPTION_KEY
 
 # NextAuth配置
 NEXTAUTH_SECRET=$NEXTAUTH_SECRET
-NEXTAUTH_URL=http://$SERVER_IP:3005
+NEXTAUTH_URL=https://bb.ceoedu.eu.org
 
 # 系统配置
 NODE_ENV=production

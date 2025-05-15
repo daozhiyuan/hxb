@@ -100,8 +100,10 @@ function LoginContent() {
 
       // 使用setTimeout延迟跳转，确保toast能够显示
       setTimeout(() => {
-        router.push(result.url || callbackUrl);
-        router.refresh();
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bb.ceoedu.eu.org';
+        const targetUrl = result.url || callbackUrl;
+        const fullUrl = targetUrl.startsWith('http') ? targetUrl : `${baseUrl}${targetUrl}`;
+        window.location.href = fullUrl;
       }, 500);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '登录过程中发生错误';
