@@ -15,13 +15,12 @@ import { isSuperAdmin } from '@/lib/auth-helpers';
 interface Customer {
   id: number;
   name: string;
-  companyName: string | null;
   phone: string | null;
   email: string | null;
   status: string;
   registrationDate: string;
   updatedAt: string;
-  registeredByPartnerId: number;
+  partnerId: number;
 }
 
 // 禁用静态生成和 RSC 预取
@@ -52,8 +51,9 @@ export default function SuperAdminPage() {
       const response = await fetch('/api/crm/customers');
       if (!response.ok) throw new Error('获取客户数据失败');
       
-      const data = await response.json();
-      setCustomers(data.data || []);
+      const responseData = await response.json();
+      // 确保从正确的数据结构中提取customers数组
+      setCustomers(responseData.data || []);
     } catch (error) {
       console.error('获取客户数据失败:', error);
     } finally {
@@ -65,7 +65,7 @@ export default function SuperAdminPage() {
   const filteredCustomers = customers.filter(customer => 
     customer.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
     (customer.phone && customer.phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+    (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   // 显示加载状态
@@ -103,7 +103,7 @@ export default function SuperAdminPage() {
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                   <Input
                     type="search"
-                    placeholder="搜索客户姓名、电话或公司..."
+                    placeholder="搜索客户姓名、电话或邮箱..."
                     className="pl-9"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -133,8 +133,8 @@ export default function SuperAdminPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>客户姓名</TableHead>
-                      <TableHead>公司</TableHead>
-                      <TableHead>联系方式</TableHead>
+                      <TableHead>联系电话</TableHead>
+                      <TableHead>邮箱</TableHead>
                       <TableHead>状态</TableHead>
                       <TableHead className="text-right">操作</TableHead>
                     </TableRow>
@@ -143,10 +143,8 @@ export default function SuperAdminPage() {
                     {filteredCustomers.map((customer) => (
                       <TableRow key={customer.id}>
                         <TableCell className="font-medium">{customer.name}</TableCell>
-                        <TableCell>{customer.companyName || "-"}</TableCell>
-                        <TableCell>
-                          {customer.phone || customer.email || "-"}
-                        </TableCell>
+                        <TableCell>{customer.phone || "-"}</TableCell>
+                        <TableCell>{customer.email || "-"}</TableCell>
                         <TableCell>
                           {customer.status === 'FOLLOWING' && '跟进中'}
                           {customer.status === 'NEGOTIATING' && '洽谈中'}

@@ -21,7 +21,6 @@ import { idCardTypeMap } from '@/config/constants';
 interface CustomerDetail {
   id: number;
   name: string;
-  companyName: string | null;
   phone: string | null;
   email: string | null;
   status: string;
@@ -29,7 +28,8 @@ interface CustomerDetail {
   jobTitle: string | null;
   notes: string | null;
   registrationDate: string;
-  registeredByPartnerId: number;
+  partnerId: number;
+  idNumber: string | null;
   decryptedIdCardNumber: string;
   idCardType?: string;
 }

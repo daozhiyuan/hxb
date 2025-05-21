@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
 import { isAdmin } from '@/lib/auth-helpers';
-import { customers_status } from '@prisma/client';
+import { CustomerStatusEnum } from '@/config/client-config';
 
 // 设置为动态路由
 export const dynamic = 'force-dynamic';
@@ -46,12 +46,12 @@ export async function GET(request: Request) {
     // 构建查询条件
     const whereCondition = isAdminUser 
       ? { 
-          registrationDate: { gte: startDate } 
+          createdAt: { gte: startDate } 
         } 
       : { 
           AND: [
-            { registeredByPartnerId: session.user.id },
-            { registrationDate: { gte: startDate } }
+            { partnerId: session.user.id },
+            { createdAt: { gte: startDate } }
           ]
         };
 
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
     ] = await Promise.all([
       // 总客户数
       prisma.customer.count({
-        where: isAdminUser ? {} : { registeredByPartnerId: session.user.id }
+        where: isAdminUser ? {} : { partnerId: session.user.id }
       }),
       
       // 新增客户数
@@ -75,13 +75,13 @@ export async function GET(request: Request) {
     const statusStatistics: Record<string, number> = {};
     
     // 获取所有可能的状态值
-    const allStatuses = Object.values(customers_status);
+    const allStatuses = Object.values(CustomerStatusEnum);
     
     // 对每个状态单独进行查询
     for (const status of allStatuses) {
       const count = await prisma.customer.count({
         where: {
-          ...isAdminUser ? {} : { registeredByPartnerId: session.user.id },
+          ...isAdminUser ? {} : { partnerId: session.user.id },
           status
         }
       });

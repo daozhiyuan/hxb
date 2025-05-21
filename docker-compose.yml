@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - "3005:3005"
+      - "3007:3000"
     volumes:
       - ./public/uploads:/app/public/uploads
       - ./logs:/app/logs
@@ -36,7 +36,7 @@ services:
     environment:
       - DATABASE_URL=mysql://root:password@db:3306/nextn
       - NEXTAUTH_SECRET=LLwTqhMaKvmhLxsM4SRs+GJ8cZ71eHdQ
-      - NEXTAUTH_URL=http://localhost:3005
+      - NEXTAUTH_URL=http://localhost:3007
       - NODE_ENV=production
       - ENCRYPTION_KEY=1ZACHw0/coS8sknni7E+PRvvaZ9UMv/K1cQvMDA4fnU=
       - OLD_ENCRYPTION_KEY=your_optional_old_encryption_key

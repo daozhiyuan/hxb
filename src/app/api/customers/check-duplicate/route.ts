@@ -1,60 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import crypto from 'crypto';
 import { safeCheckDuplicateCustomer } from '@/lib/prisma-helpers';
 import { IdCardType } from '@/lib/client-validation';
+import { hashIdCard } from '@/lib/encryption';
 
 // 设置为动态路由
 export const dynamic = 'force-dynamic';
-
-// 哈希函数，使用SHA-256哈希证件号码
-const hashIdCard = (idCardNumber: string, idCardType: string = IdCardType.CHINA_MAINLAND): string => {
-  try {
-    // 输入验证
-    if (!idCardNumber || typeof idCardNumber !== 'string') {
-      console.error('[hashIdCard] 证件号码无效:', idCardNumber);
-      return `invalid_${Date.now().toString()}`;
-    }
-
-    // 去除输入中的空格和特殊字符
-    const cleanedNumber = idCardNumber.trim();
-    
-    // 记录哈希计算信息，不包含敏感数据
-    console.log(`[hashIdCard] 计算哈希: 类型=${idCardType}, 长度=${cleanedNumber.length}, 前三位=${cleanedNumber.substring(0, Math.min(3, cleanedNumber.length))}`);
-    
-    // 创建哈希，加入证件类型作为前缀，确保不同证件类型的相同号码产生不同哈希
-    const hash = crypto.createHash('sha256');
-    hash.update(`${idCardType || IdCardType.CHINA_MAINLAND}:${cleanedNumber}`);
-    
-    // 返回哈希结果的十六进制表示
-    const result = hash.digest('hex');
-    console.log(`[hashIdCard] 哈希计算成功, 结果前几位: ${result.substring(0, 8)}...`);
-    return result;
-  } catch (error) {
-    console.error('[hashIdCard] 哈希证件号码失败:', error);
-    
-    // 安全的回退处理
-    try {
-      // 确保idCardNumber至少有1个字符
-      const safeNumber = idCardNumber && typeof idCardNumber === 'string' ? idCardNumber : 'invalid';
-      const safeType = idCardType || IdCardType.CHINA_MAINLAND;
-      
-      // 生成唯一标识，使用证件类型前缀、证件号码的前三个字符（如果有）以及时间戳
-      const prefix = safeNumber.substring(0, Math.min(3, safeNumber.length));
-      const fallbackHash = `hash_${safeType}_${prefix}_${Date.now().toString()}`;
-      
-      console.log(`[hashIdCard] 使用回退哈希: ${fallbackHash.substring(0, 15)}...`);
-      return fallbackHash;
-    } catch (backupError) {
-      console.error('[hashIdCard] 生成备用哈希也失败:', backupError);
-      // 最后的回退方案：使用时间戳确保唯一性
-      const emergencyHash = `emergency_hash_${Date.now().toString()}`;
-      console.log(`[hashIdCard] 使用紧急哈希: ${emergencyHash}`);
-      return emergencyHash;
-    }
-  }
-};
 
 // 检查客户是否重复
 export async function GET(request: Request) {
@@ -83,7 +35,7 @@ export async function GET(request: Request) {
       }, { status: 400 });
     }
 
-    // 哈希证件号
+    // 使用统一的hashIdCard函数进行哈希
     const idCardHash = hashIdCard(idNumber, idCardType);
     console.log(`[check-duplicate] 生成哈希值完成, 前几位: ${idCardHash.substring(0, 8)}...`);
 

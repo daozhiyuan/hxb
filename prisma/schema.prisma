@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -27,13 +28,13 @@ model User {
   invoiceTitle          String?     @db.VarChar(200)
   phone                 String?     @db.VarChar(50)
   taxId                 String?     @db.VarChar(100)
-  idCardNumberEncrypted String?     @db.VarChar(500)
+  idCardNumberEncrypted String?     @db.Text
   idCardType            String?     @default("CHINA_MAINLAND")
   followUps             FollowUp[]
   submittedAppeals      Appeal[]    @relation("PartnerAppeals")
   processedAppeals      Appeal[]    @relation("OperatorAppeals")
   appealLogs            AppealLog[]
-  customers             Customer[]
+  customers             Customer[]  @relation("PartnerCustomers")
 
   @@index([email])
   @@map("users")
@@ -88,17 +89,20 @@ model Appeal {
   remarks          String?
   adminComment     String?
   idCardType       String       @default("CHINA_MAINLAND")
+  customerId       Int?
   previousAppeal   Appeal?      @relation("AppealToAppeal", fields: [previousAppealId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   nextAppeals      Appeal[]     @relation("AppealToAppeal")
   partner          User         @relation("PartnerAppeals", fields: [partnerId], references: [id])
   operator         User?        @relation("OperatorAppeals", fields: [operatorId], references: [id])
   logs             AppealLog[]
+  customer         Customer?    @relation(fields: [customerId], references: [id])
 
   @@unique([partnerId, idNumberHash])
   @@index([status])
   @@index([partnerId])
   @@index([operatorId])
   @@index([previousAppealId])
+  @@index([customerId])
 }
 
 model AppealLog {
@@ -116,37 +120,31 @@ model AppealLog {
 }
 
 model Customer {
-  id                    Int              @id @default(autoincrement())
-  name                  String
-  companyName           String?
-  phone                 String?
-  email                 String?
-  status                customers_status
-  notes                 String?
-  registrationDate      DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  jobTitle              String?
-  registeredByPartnerId Int
-  address               String?
-  idCardHash            String?          @unique
-  idCardNumberEncrypted String?          @db.Text
-  lastYearRevenue       Float?
-  followUpStatus        String?          @db.VarChar(50)
-  industry              String?          @db.VarChar(100)
-  lastContactedAt       DateTime?
-  lastFollowUpAt        DateTime?
-  logs                  Json?
-  nextFollowUpAt        DateTime?
-  position              String?          @db.VarChar(100)
-  priority              String?          @db.VarChar(20)
-  source                String?          @db.VarChar(50)
-  idCardType            String?          @default("CHINA_MAINLAND")
-  registeredBy          User             @relation(fields: [registeredByPartnerId], references: [id])
-  followUps             FollowUp[]
-  tags                  CustomerTag[]    @relation("CustomerToCustomerTag")
+  id              Int           @id @default(autoincrement())
+  name            String
+  idNumber        String?       @db.Text
+  idNumberHash    String
+  idCardType      String        @default("CHINA_MAINLAND")
+  phone           String?
+  email           String?
+  address         String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  partnerId       Int
+  notes           String?       @db.Text
+  status          String        @default("active")
+  lastContactDate DateTime?
+  source          String?
+  industry        String?
+  jobTitle        String?
+  partner         User          @relation("PartnerCustomers", fields: [partnerId], references: [id])
+  appeals         Appeal[]
+  followUps       FollowUp[]
+  tags            CustomerTag[] @relation("CustomerToCustomerTag")
 
-  @@index([registeredByPartnerId])
-  @@map("customers")
+  @@unique([partnerId, idNumberHash])
+  @@index([partnerId])
+  @@index([status])
 }
 
 model CustomerToCustomerTag {
@@ -170,13 +168,4 @@ enum AppealStatus {
   PROCESSING @map("processing")
   APPROVED   @map("approved")
   REJECTED   @map("rejected")
-}
-
-enum customers_status {
-  FOLLOWING
-  NEGOTIATING
-  PENDING
-  SIGNED
-  COMPLETED
-  LOST
 }

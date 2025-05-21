@@ -36,7 +36,7 @@ export async function GET(
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
       include: {
-        registeredBy: true,
+        partner: true,
         followUps: {
           orderBy: {
             createdAt: 'desc'
@@ -54,8 +54,8 @@ export async function GET(
     let decryptedIdCardNumber = '';
     if (isSuperAdmin(session)) {
       try {
-        decryptedIdCardNumber = customer.idCardNumberEncrypted 
-          ? decryptIdCard(customer.idCardNumberEncrypted) 
+        decryptedIdCardNumber = customer.idNumber 
+          ? decryptIdCard(customer.idNumber) 
           : '';
       } catch (error) {
         console.error("解密身份证号码失败:", error);
@@ -65,7 +65,7 @@ export async function GET(
     // 始终返回加密字段
     return NextResponse.json({
       ...customer,
-      idCardNumberEncrypted: customer.idCardNumberEncrypted || '',
+      idNumber: customer.idNumber || '',
       decryptedIdCardNumber: isSuperAdmin(session) ? decryptedIdCardNumber : '',
     });
   } catch (error) {
@@ -109,7 +109,7 @@ export async function PATCH(
     }
     
     // 使用权限辅助函数检查访问权限 - 只有管理员或超级管理员可访问
-    if (!hasPermission(session, customer.registeredByPartnerId, [Role.ADMIN, Role.SUPER_ADMIN])) {
+    if (!hasPermission(session, customer.partner?.id, [Role.ADMIN, Role.SUPER_ADMIN])) {
       return NextResponse.json({ error: '没有权限更新此客户' }, { status: 403 });
     }
     
@@ -120,8 +120,8 @@ export async function PATCH(
     
     // 定义允许更新的字段
     const allowedFields = [
-      'name', 'companyName', 'phone', 'email', 'status', 
-      'notes', 'address', 'jobTitle', 'lastYearRevenue'
+      'name', 'phone', 'email', 'status', 
+      'notes', 'address', 'jobTitle'
     ];
     
     // 超级管理员可以更新证件号码
@@ -197,14 +197,12 @@ export async function PATCH(
       select: {
         id: true,
         name: true,
-        companyName: true,
         phone: true,
         email: true,
         status: true,
         notes: true,
         address: true,
         jobTitle: true,
-        lastYearRevenue: true,
         updatedAt: true
       }
     });

@@ -106,12 +106,18 @@ export async function GET(request: Request) {
       ].join(',');
     });
 
-    const csvContent = [csvHeaders, ...rows].join('\n');
+    // 添加UTF-8 BOM标记，解决Excel打开中文乱码问题
+    const UTF8_BOM = '\uFEFF';
+    let csvContent = UTF8_BOM + [csvHeaders, ...rows].join('\n');
 
     // 设置响应头
     const responseHeaders = new Headers();
     responseHeaders.set('Content-Type', 'text/csv; charset=utf-8');
-    responseHeaders.set('Content-Disposition', 'attachment; filename=appeals.csv');
+    
+    // 使用RFC 5987编码处理中文文件名
+    const fileName = `appeals_${format(new Date(), 'yyyy-MM-dd', { locale: zhCN })}.csv`;
+    const encodedFileName = encodeURIComponent(fileName).replace(/['()]/g, escape);
+    responseHeaders.set('Content-Disposition', `attachment; filename="${fileName}"; filename*=UTF-8''${encodedFileName}`);
 
     return new NextResponse(csvContent, {
       status: 200,

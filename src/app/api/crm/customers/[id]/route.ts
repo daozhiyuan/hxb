@@ -42,17 +42,17 @@ export async function GET(
     }
     
     // 使用权限辅助函数检查访问权限
-    if (!hasPermission(session, (customer as any).registeredByPartnerId)) {
+    if (!hasPermission(session, (customer as any).partnerId)) {
       return forbiddenResponse('没有权限查看此客户');
     }
     
     // 解密身份证号码（如果是超级管理员）
     let decryptedData = { ...customer };
     // 始终返回加密字段
-    decryptedData.idCardNumberEncrypted = (customer as any).idCardNumberEncrypted || '';
-    if (isSuperAdmin(session) && (customer as any).idCardNumberEncrypted) {
+    decryptedData.idNumber = (customer as any).idNumber || '';
+    if (isSuperAdmin(session) && (customer as any).idNumber) {
       try {
-        const decryptedResult = decryptIdCard((customer as any).idCardNumberEncrypted);
+        const decryptedResult = decryptIdCard((customer as any).idNumber);
         if (decryptedResult.startsWith('解密失败') || 
             decryptedResult.startsWith('格式错误') ||
             decryptedResult === '加密密钥未初始化') {
@@ -98,7 +98,7 @@ export async function PATCH(
     }
     
     // 使用权限辅助函数检查访问权限
-    if (!hasPermission(session, customer.registeredByPartnerId)) {
+    if (!hasPermission(session, customer.partnerId)) {
       return forbiddenResponse('没有权限更新此客户');
     }
     
@@ -124,7 +124,7 @@ export async function PATCH(
     // 超级管理员可以更新身份证号码
     if (isSuperAdmin(session) && body.idNumber) {
       try {
-        updateData.idCardNumberEncrypted = body.idNumber;
+        updateData.idNumber = body.idNumber;
       } catch (error) {
         return errorResponse('身份证号码加密失败', 422, 'ENCRYPTION_ERROR');
       }
@@ -142,7 +142,7 @@ export async function PATCH(
         email: true,
         status: true,
         notes: true,
-        registrationDate: true,
+        createdAt: true,
         updatedAt: true,
         jobTitle: true,
         address: true,

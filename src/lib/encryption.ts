@@ -142,18 +142,111 @@ export function decryptIdCard(text: string): string {
         let decrypted = decipher.update(encryptedData);
         decrypted = Buffer.concat([decrypted, decipher.final()]);
         return decrypted.toString('utf8');
-      } catch (e) {
+      } catch (e: any) {
         console.error('新版混合加密格式解密失败:', e);
-        return '[解密失败: 新版加密格式错误]';
+        // 不直接返回，继续尝试历史分支
       }
     }
     // 明文格式
     if (isValidIdCardFormat(text)) {
       return text;
     }
-    // 兼容老格式（Base64、IV:Hex等）
-    // ...可按你原有的老解密逻辑补充...
-    return '[解密失败: 格式无法识别]';
+    // 历史分支1：tkl1前缀
+    if (text.startsWith('tkl1')) {
+      try {
+        const key = getLegacyKey();
+        const payload = text.substring(4);
+        if (payload && payload.length > 0) {
+          let standardBase64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+          while (standardBase64.length % 4 !== 0) standardBase64 += '=';
+          const buffer = Buffer.from(standardBase64, 'base64');
+          const decoded = buffer.toString('utf8');
+          if (decoded && /^\d{17}[\dXx]$/i.test(decoded)) return decoded;
+          if (decoded && decoded.includes(':')) {
+            const decodedParts = decoded.split(':');
+            if (decodedParts.length === 2) {
+              const iv = Buffer.from(decodedParts[0], 'hex');
+              const encryptedData = Buffer.from(decodedParts[1], 'hex');
+              const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+              let decrypted = decipher.update(encryptedData);
+              decrypted = Buffer.concat([decrypted, decipher.final()]);
+              const result = decrypted.toString();
+              if (result && /^\d{17}[\dXx]$/i.test(result)) return result;
+            }
+          }
+        }
+        return `[tkl1格式] ${text}`;
+      } catch (e: any) {
+        return `[tkl1格式解析错误] ${text}`;
+      }
+    }
+    // 历史分支2：特殊Base64/URL-Safe Base64格式
+    if (text.includes('/9xy') || (text.length >= 60 && /^[A-Za-z0-9+/=_-]+$/.test(text))) {
+      try {
+        const key = getLegacyKey();
+        let standardBase64 = text.replace(/-/g, '+').replace(/_/g, '/');
+        while (standardBase64.length % 4 !== 0) standardBase64 += '=';
+        const buffer = Buffer.from(standardBase64, 'base64');
+        try {
+          const directDecoded = buffer.toString('utf8');
+          if (directDecoded && /^\d{17}[\dXx]$/i.test(directDecoded)) return directDecoded;
+        } catch {}
+        if (buffer.length > 6) {
+          try {
+            const shortIv = buffer.slice(0, 6);
+            const paddedIv = Buffer.concat([shortIv, Buffer.alloc(10)]);
+            const encryptedData = buffer.slice(6);
+            const decipher = crypto.createDecipheriv('aes-256-cbc', key, paddedIv);
+            let decrypted = decipher.update(encryptedData);
+            decrypted = Buffer.concat([decrypted, decipher.final()]);
+            const result = decrypted.toString();
+            if (result && result.length >= 5 && /^[\x20-\x7E]+$/.test(result)) return result;
+          } catch {}
+        }
+        return `[特殊格式] ${text}`;
+      } catch (e: any) {
+        return `[特殊格式解析错误] ${text}`;
+      }
+    }
+    // 历史分支3：标准AES-CBC格式（IV:EncryptedHex）
+    if (text.includes(':')) {
+      try {
+        const key = getLegacyKey();
+        const parts = text.split(':');
+        if (parts.length !== 2) return '格式错误: 不符合IV:EncryptedHex标准格式';
+        const iv = Buffer.from(parts[0], 'hex');
+        const encryptedData = Buffer.from(parts[1], 'hex');
+        if (iv.length !== 16) return `格式错误: IV长度不正确 (预期16字节，实际${iv.length}字节)`;
+        const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+        let decrypted = decipher.update(encryptedData);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        const result = decrypted.toString();
+        if (!result) return '解密结果为空';
+        return result;
+      } catch (e: any) {
+        return `标准格式解密失败: ${e.message}`;
+      }
+    }
+    // 历史分支4：Base64直接存储格式
+    try {
+      if (/^[A-Za-z0-9+/=]+$/.test(text)) {
+        const key = getLegacyKey();
+        const buffer = Buffer.from(text, 'base64');
+        if (buffer.length <= 16) return 'Base64格式错误: 数据长度不足';
+        const iv = buffer.slice(0, 16);
+        const encryptedData = buffer.slice(16);
+        const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+        let decrypted = decipher.update(encryptedData);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        const result = decrypted.toString();
+        if (!result) return 'Base64解密结果为空';
+        return result;
+      }
+    } catch (e: any) {
+      return `Base64格式解密失败: ${e.message}`;
+    }
+    // 兜底：无法识别的格式
+    return `[无法解密，未知格式] ${text}`;
   } catch (error) {
     console.error('解密过程中发生错误:', error);
     return '[解密失败: 发生异常]';
@@ -308,5 +401,23 @@ export async function batchReencrypt(ids: string[]): Promise<{ success: number; 
   } catch (error) {
     console.error('批量重新加密数据失败');
     return { success: 0, failed: ids.length };
+  }
+}
+
+// 兼容历史加密的密钥获取
+function getLegacyKey() {
+  let key = process.env.ENCRYPTION_KEY;
+  if (!key) throw new Error('ENCRYPTION_KEY 环境变量未设置');
+  if (key.match(/^[A-Za-z0-9+/=]+$/) && key.length % 4 === 0) {
+    const keyBuffer = Buffer.from(key, 'base64');
+    if (keyBuffer.length === 32) return keyBuffer;
+    const adjustedBuffer = Buffer.alloc(32);
+    keyBuffer.copy(adjustedBuffer);
+    return adjustedBuffer;
+  } else {
+    let keyText = key;
+    if (key.length < 32) keyText = key.padEnd(32, key);
+    else if (key.length > 32) keyText = key.substring(0, 32);
+    return Buffer.from(keyText);
   }
 } 

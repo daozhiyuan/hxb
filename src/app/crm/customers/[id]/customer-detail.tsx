@@ -44,12 +44,12 @@ interface Customer {
   email: string | null;
   status: string;
   notes: string | null;
-  registrationDate: string;
+  createdAt: string;
   updatedAt: string;
   jobTitle: string | null;
   address: string | null;
   lastYearRevenue: number | null;
-  registeredBy: {
+  partner: {
     id: number;
     name: string | null;
     email: string;
@@ -70,6 +70,7 @@ interface Customer {
     color: string;
   }>;
   idCardType?: string;
+  registrationDate?: string;
 }
 
 interface EditCustomerFormProps {
@@ -676,7 +677,7 @@ export default function CustomerDetail({ params }: { params: { id: string } }) {
                       <Share2 className="h-5 w-5 mr-2 text-gray-500 mt-0.5" />
                       <div>
                         <div className="text-sm text-gray-500">登记人</div>
-                        <div>{customer.registeredBy?.name || (customer.registeredBy?.email || '未知')}</div>
+                        <div>{customer.partner?.name || (customer.partner?.email || '未知')}</div>
                       </div>
                     </div>
                     <div className="flex items-start">

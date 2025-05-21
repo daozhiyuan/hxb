@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AdminCreatePartnerDialog } from '@/components/admin-create-partner-dialog';
 
 export function AdminPartnerList() {
   const router = useRouter();
@@ -97,10 +98,7 @@ export function AdminPartnerList() {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">合作伙伴管理</h2>
-        <Button onClick={handleCreatePartner}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          添加合作伙伴
-        </Button>
+        <AdminCreatePartnerDialog onPartnerCreated={() => fetchPartners(1, search)} />
       </div>
 
       <div className="flex items-center gap-2 mb-4">

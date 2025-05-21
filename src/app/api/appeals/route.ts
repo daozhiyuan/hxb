@@ -207,7 +207,7 @@ export async function POST(request: Request) {
           const appeal = await prisma.appeal.create({
             data: {
               customerName,
-              idNumber,
+              idNumber: encryptIdCard(idNumber), // 使用统一的加密方案
               idNumberHash,
               reason,
               evidence,
@@ -245,7 +245,7 @@ export async function POST(request: Request) {
       const appeal = await prisma.appeal.create({
         data: {
           customerName,
-          idNumber,
+          idNumber: encryptIdCard(idNumber), // 使用统一的加密方案
           idNumberHash,
           reason,
           evidence,

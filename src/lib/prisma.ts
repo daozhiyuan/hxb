@@ -5,8 +5,8 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-// 数据库连接字符串，使用正确的CRM数据库连接
-const databaseUrl = "mysql://crmuser:crmpassword@localhost:3306/crm";
+// 从环境变量获取数据库连接字符串
+const databaseUrl = process.env.DATABASE_URL || "mysql://root:password@localhost:3306/crm_db";
 
 // Prevent multiple instances of Prisma Client in development
 const prisma = global.prisma || new PrismaClient({

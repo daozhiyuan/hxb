@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { Role } from '@prisma/client';
+// 移除 Prisma 导入，改用枚举定义
+// import { Role } from '@prisma/client';
+
+// 定义Role枚举替代Prisma导入
+enum Role {
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  PARTNER = 'PARTNER'
+}
 
 // 内存存储最近的请求（生产环境应使用Redis等分布式存储）
 const ipRequestMap = new Map<string, { count: number; timestamp: number }>();

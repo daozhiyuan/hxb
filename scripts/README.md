@@ -119,4 +119,31 @@ node scripts/fix-customer-21.js
 1. 请在运行修复脚本前**务必备份数据**
 2. 验证脚本不会修改数据库，可以安全运行
 3. 使用`--dry-run`参数可以模拟修复过程而不实际更新数据库
-4. 所有脚本运行日志会输出到控制台，也可以通过重定向保存到文件 
+4. 所有脚本运行日志会输出到控制台，也可以通过重定向保存到文件
+
+# scripts 目录说明
+
+## 核心脚本
+- `fix-encrypted-data.cjs`：统一修复和迁移所有加密数据，兼容历史格式，推荐唯一使用。
+- `generate-keys.cjs`：生成RSA密钥对（private.pem/public.pem），用于新加密方案。
+
+## 已废弃脚本（已删除）
+- fix-appeal-encryption.js
+- fix-all-idcards.js
+- fix-double-encrypted-id.js
+- fix-idcard-db.js
+- fix-invalid-id-formats.js
+- restore-id-cards.js
+- assign-real-idcards.js
+- fix-special-id.js
+- fix-customer-idcards.js
+
+> 以上脚本因加密方案统一已全部废弃，不再维护。
+
+## 使用说明
+- 运行修复脚本：`node scripts/fix-encrypted-data.cjs`
+- 生成密钥对：`node scripts/generate-keys.cjs`
+
+## 注意事项
+- 所有敏感数据修复、密钥生成操作请在安全环境下执行。
+- 运行前请备份数据库和密钥文件。 

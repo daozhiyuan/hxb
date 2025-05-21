@@ -33,11 +33,10 @@ export async function GET(request: Request) {
     const where = searchQuery ? {
       OR: [
         { name: { contains: searchQuery } },
-        { companyName: { contains: searchQuery } },
         { email: { contains: searchQuery } },
         { phone: { contains: searchQuery } },
         {
-          registeredBy: {
+          partner: {
             OR: [
               { name: { contains: searchQuery } },
               { email: { contains: searchQuery } }
@@ -62,7 +61,7 @@ export async function GET(request: Request) {
         updatedAt: 'desc',
       },
       include: {
-        registeredBy: {
+        partner: {
           select: {
             id: true,
             name: true,

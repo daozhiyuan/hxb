@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   const page = parseInt(searchParams.get('page') || '1')
   const pageSize = parseInt(searchParams.get('pageSize') || '10')
   const searchQuery = searchParams.get('search') || ''
-  const sortBy = searchParams.get('sortBy') || 'registrationDate'
+  const sortBy = searchParams.get('sortBy') || 'createdAt'
   const sortOrder = (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc'
   const statusFilter = searchParams.get('status') || ''
   
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       if (isSuperAdmin(session) && Array.isArray(result.data)) {
         result.data = result.data.map((customer: any) => ({
           ...customer,
-          decryptedIdCardNumber: customer.idCardNumberEncrypted ? decryptIdCard(customer.idCardNumberEncrypted) : ''
+          decryptedIdCardNumber: customer.idNumber ? decryptIdCard(customer.idNumber) : ''
         }));
       }
       return successResponse(result)
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         
         // 添加合作伙伴过滤条件 - 将这个条件移到最前面确保始终应用
         if (session.user.role === 'PARTNER') {
-          whereCondition += " AND registeredByPartnerId = ?";
+          whereCondition += " AND partnerId = ?";
           params.push(Number(session.user.id));
         }
         
@@ -88,13 +88,13 @@ export async function GET(request: Request) {
         }
         
         // 验证排序字段
-        const validSortFields = ['registrationDate', 'name', 'updatedAt', 'status', 'companyName', 'email'];
-        const actualSortBy = validSortFields.includes(sortBy) ? sortBy : 'registrationDate';
+        const validSortFields = ['createdAt', 'name', 'updatedAt', 'status', 'companyName', 'email'];
+        const actualSortBy = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
         const actualSortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
         
         console.log('执行直接SQL查询计数...');
         // 构建计数查询
-        const countQuery = `SELECT COUNT(*) as total FROM customers ${whereCondition}`;
+        const countQuery = `SELECT COUNT(*) as total FROM Customer ${whereCondition}`;
         console.log('计数查询:', countQuery, params);
         
         const countResult = await prisma.$queryRawUnsafe(countQuery, ...params);
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
         // 构建数据查询
         const orderClause = `ORDER BY ${actualSortBy} ${actualSortOrder}`;
         const limitClause = `LIMIT ? OFFSET ?`;
-        const dataQuery = `SELECT * FROM customers ${whereCondition} ${orderClause} ${limitClause}`;
+        const dataQuery = `SELECT * FROM Customer ${whereCondition} ${orderClause} ${limitClause}`;
         console.log('数据查询:', dataQuery, [...params, pageSize, skip]);
         
         // 执行查询
@@ -131,14 +131,14 @@ export async function GET(request: Request) {
           console.log('尝试最简单的查询作为最后手段...');
           // 确保强制应用合作伙伴筛选条件
           const whereCondition = session.user.role === 'PARTNER' 
-            ? `WHERE registeredByPartnerId = ${Number(session.user.id)}` 
+            ? `WHERE partnerId = ${Number(session.user.id)}` 
             : '';
             
-          const simpleQuery = `SELECT * FROM customers ${whereCondition} ORDER BY registrationDate DESC LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
+          const simpleQuery = `SELECT * FROM Customer ${whereCondition} ORDER BY createdAt DESC LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`;
           const customers = await prisma.$queryRawUnsafe(simpleQuery);
           
           // 获取总数
-          const countQuery = `SELECT COUNT(*) as total FROM customers ${whereCondition}`;
+          const countQuery = `SELECT COUNT(*) as total FROM Customer ${whereCondition}`;
           const countResult = await prisma.$queryRawUnsafe(countQuery);
           const total = Number((countResult as any)[0]?.total || 0);
           

@@ -3,7 +3,14 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import prisma from './prisma';
 import { compare } from 'bcryptjs';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
-import { Role } from '@prisma/client';
+
+// 定义Role枚举替代Prisma导入
+export enum Role {
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  PARTNER = 'PARTNER'
+}
 
 declare module 'next-auth' {
   interface Session {

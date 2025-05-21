@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { customers_status } from '@prisma/client';
+// import { customers_status } from '@prisma/client';
 import prisma from './prisma';
 import { Prisma } from '@prisma/client';
 import { CustomerStatusEnum } from '@/config/client-config';
@@ -40,8 +40,8 @@ export async function getSafeCustomersList(options: {
   const { page, pageSize, where, sortBy, sortOrder } = options;
 
   // 验证排序字段是否有效，避免使用不存在的字段
-  const validSortFields = ['registrationDate', 'name', 'updatedAt', 'status', 'companyName', 'email'];
-  const actualSortBy = validSortFields.includes(sortBy) ? sortBy : 'registrationDate';
+  const validSortFields = ['createdAt', 'name', 'updatedAt', 'status', 'companyName', 'email'];
+  const actualSortBy = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
   const actualSortOrder = sortOrder === 'asc' ? 'asc' : 'desc';
   
   try {
@@ -54,7 +54,7 @@ export async function getSafeCustomersList(options: {
     
     // 添加合作伙伴ID筛选条件
     if (where.registeredByPartnerId) {
-      whereClause = ' WHERE registeredByPartnerId = ? ';
+      whereClause = ' WHERE partnerId = ? ';
       params.push(where.registeredByPartnerId);
     }
     
@@ -78,14 +78,14 @@ export async function getSafeCustomersList(options: {
     }
     
     // 执行计数查询
-    const countQuery = `SELECT COUNT(*) as total FROM customers${whereClause}`;
+    const countQuery = `SELECT COUNT(*) as total FROM Customer${whereClause}`;
     const countResult = await prisma.$queryRawUnsafe<[{total: number}]>(countQuery, ...params);
     const total = Number(countResult[0]?.total || 0);
     
     // 执行数据查询
     const orderClause = ` ORDER BY ${actualSortBy} ${actualSortOrder}`;
     const limitClause = ` LIMIT ? OFFSET ?`;
-    const dataQuery = `SELECT * FROM customers${whereClause}${orderClause}${limitClause}`;
+    const dataQuery = `SELECT * FROM Customer${whereClause}${orderClause}${limitClause}`;
     const customers = await prisma.$queryRawUnsafe(dataQuery, ...params, pageSize, skip);
     
     // 批量解密证件号
@@ -93,8 +93,8 @@ export async function getSafeCustomersList(options: {
     const processedCustomers = (customers || []).map((customer: any) => ({
       ...customer,
       // 确保registrationDate存在
-      registrationDate: customer.registrationDate || customer.createdAt || null,
-      decryptedIdCardNumber: customer.idCardNumberEncrypted ? decryptIdCard(customer.idCardNumberEncrypted) : ''
+      registrationDate: customer.createdAt || null,
+      decryptedIdCardNumber: customer.idNumber ? decryptIdCard(customer.idNumber) : ''
     }));
 
     return {
@@ -129,19 +129,17 @@ export async function getSafeCustomerDetails(customerId: number) {
   const basicFields = {
     id: true,
     name: true,
-    companyName: true,
     phone: true,
     email: true,
     status: true,
     notes: true,
-    registrationDate: true,
+    createdAt: true,
     updatedAt: true,
     jobTitle: true,
     address: true,
-    idCardHash: true,
-    idCardNumberEncrypted: true,
-    lastYearRevenue: true,
-    registeredByPartnerId: true,
+    idNumberHash: true,
+    idNumber: true,
+    partnerId: true,
   };
 
   // 尝试获取包含标签的客户
@@ -159,7 +157,7 @@ export async function getSafeCustomerDetails(customerId: number) {
           }
         },
         // 注册人信息（已确认可用）
-        registeredBy: {
+        partner: {
           select: {
             id: true,
             name: true,
@@ -201,23 +199,22 @@ export async function getSafeCustomerDetails(customerId: number) {
     ...(customer as {
       id: number;
       name: string;
-      companyName: string | null;
       phone: string | null;
       email: string | null;
       status: string;
       notes: string | null;
-      registrationDate: Date;
+      createdAt: Date;
       updatedAt: Date;
       jobTitle: string | null;
       address: string | null;
-      idCardHash: string | null;
-      idCardNumberEncrypted: string | null;
-      lastYearRevenue: number | null;
-      registeredByPartnerId: number;
+      idNumberHash: string | null;
+      idNumber: string | null;
+      partnerId: number;
       idCardType?: string;
       tags?: any[];
-      registeredBy?: any;
+      partner?: any;
     }),
+    registrationDate: (customer as any).createdAt,
     followUps: followUps || []
   };
 }
@@ -437,31 +434,31 @@ export async function safeFindCustomerByIdCardHash(idCardHash: string) {
   try {
     // 使用Prisma模型查询
     const customer = await prisma.customer.findFirst({
-      where: { idCardHash }
+      where: { idNumberHash: idCardHash }
     });
     
     return { 
       success: true, 
       customer: customer ? { 
         id: customer.id, 
-        registeredByPartnerId: customer.registeredByPartnerId 
+        registeredByPartnerId: customer.partnerId 
       } : null 
     };
   } catch (error) {
     console.error('安全查找客户记录失败:', error);
     
-    // 如果模型查询失败，尝试使用直接SQL查询
+    // 如果模型查询失败，尝试使用直接SQL查询，修正表名为Customer和字段名
     try {
-      const result = await prisma.$queryRaw<{id: number, registeredByPartnerId: number}[]>`
-        SELECT id, registeredByPartnerId 
-        FROM customers 
-        WHERE idCardHash = ${idCardHash} 
+      const result = await prisma.$queryRaw<{id: number, partnerId: number}[]>`
+        SELECT id, partnerId 
+        FROM Customer 
+        WHERE idNumberHash = ${idCardHash} 
         LIMIT 1;
       `;
       
       // 如果找到结果，返回第一条记录
       if (result && result.length > 0) {
-        return { success: true, customer: result[0] };
+        return { success: true, customer: { id: result[0].id, registeredByPartnerId: result[0].partnerId } };
       }
       
       // 未找到记录
@@ -478,23 +475,23 @@ export async function safeCheckDuplicateCustomer(idCardHash: string) {
   try {
     // 使用Prisma模型查询
     const count = await prisma.customer.count({
-      where: { idCardHash }
+      where: { idNumberHash: idCardHash }
     });
     
     return { success: true, isDuplicate: count > 0 };
   } catch (error) {
     console.error('检查客户是否重复失败:', error);
     
-    // 如果模型查询失败，尝试使用直接SQL查询
+    // 如果模型查询失败，尝试使用直接SQL查询，修正表名为Customer
     try {
       const result = await prisma.$queryRaw<{count: number}[]>`
         SELECT COUNT(*) as count 
-        FROM customers 
-        WHERE idCardHash = ${idCardHash};
+        FROM Customer 
+        WHERE idNumberHash = ${idCardHash};
       `;
       
       // 获取计数结果
-      const count = result[0]?.count || 0;
+      const count = Number(result[0]?.count || 0);
       return { success: true, isDuplicate: count > 0 };
     } catch (sqlError) {
       console.error('SQL检查客户是否重复也失败:', sqlError);
@@ -506,35 +503,20 @@ export async function safeCheckDuplicateCustomer(idCardHash: string) {
 // 安全地创建客户记录的函数
 export async function safeCreateCustomer(data: {
   name: string;
-  idCardNumberEncrypted: string;
-  idCardHash: string;
+  idNumber: string;
+  idNumberHash: string;
   registeredByPartnerId: number;
   idCardType?: string;
-  companyName?: string | null;
-  lastYearRevenue?: number | string | null;
   phone?: string | null;
+  email?: string | null;
   address?: string | null;
   status?: string | null;
   notes?: string | null;
   jobTitle?: string | null;
   industry?: string | null;
   source?: string | null;
-  position?: string | null;
 }) {
   try {
-    // 处理lastYearRevenue，确保为数字或null
-    let processedRevenue: number | null = null;
-    if (data.lastYearRevenue !== undefined && data.lastYearRevenue !== null) {
-      if (typeof data.lastYearRevenue === 'string') {
-        if (data.lastYearRevenue !== '') {
-          const parsed = parseFloat(data.lastYearRevenue);
-          processedRevenue = isNaN(parsed) ? null : parsed;
-        }
-      } else {
-        processedRevenue = data.lastYearRevenue;
-      }
-    }
-
     // 确保status是有效的枚举值
     const status = data.status && Object.values(CustomerStatusEnum).includes(data.status as any) 
       ? data.status 
@@ -544,20 +526,18 @@ export async function safeCreateCustomer(data: {
     const customer = await prisma.customer.create({
       data: {
         name: data.name,
-        idCardNumberEncrypted: data.idCardNumberEncrypted,
-        idCardHash: data.idCardHash,
-        registeredByPartnerId: data.registeredByPartnerId,
+        idNumber: data.idNumber,
+        idNumberHash: data.idNumberHash,
+        partnerId: data.registeredByPartnerId,
         idCardType: data.idCardType || 'CHINA_MAINLAND',
-        companyName: data.companyName || null,
-        lastYearRevenue: processedRevenue,
         phone: data.phone || null,
+        email: data.email || null,
         address: data.address || null,
-        status: status as customers_status,
+        status: status,
         notes: data.notes || null,
         jobTitle: data.jobTitle || null,
         industry: data.industry || null,
         source: data.source || null,
-        position: data.position || null,
       }
     });
     
@@ -566,7 +546,7 @@ export async function safeCreateCustomer(data: {
       customer: { 
         id: customer.id,
         name: customer.name,
-        registeredByPartnerId: customer.registeredByPartnerId
+        registeredByPartnerId: customer.partnerId
       } 
     };
   } catch (error) {
