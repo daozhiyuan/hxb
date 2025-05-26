@@ -7,7 +7,7 @@ echo "=== 客户管理系统启动脚本 ==="
 echo "正在等待数据库连接..."
 max_retries=30
 count=0
-while ! wget -q -O- http://db:3306 >/dev/null 2>&1; do
+while ! mysqladmin ping -h db -u root -ppassword --silent; do
   count=$((count + 1))
   if [ $count -ge $max_retries ]; then
     echo "数据库连接超时，请检查数据库服务是否正常运行。"
@@ -22,9 +22,16 @@ echo "数据库连接成功！"
 echo "正在应用数据库迁移..."
 npx prisma migrate deploy
 
+# 检查数据库表是否存在
+echo "检查数据库表结构..."
+if ! mysql -h db -u root -ppassword hxb -e "SELECT 1 FROM users LIMIT 1" > /dev/null 2>&1; then
+  echo "数据库表不存在，正在初始化..."
+  mysql -h db -u root -ppassword hxb < /app/mysql-init/01-init.sql
+fi
+
 # 输出启动信息
 echo "=============================================="
-echo "客户管理系统正在启动，端口: 3005"
+echo "客户管理系统正在启动，端口: 3000"
 echo "数据库连接: 已就绪"
 echo "=============================================="
 

@@ -97,6 +97,53 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      console.log('[Auth Redirect Callback] Original URL:', url);
+      console.log('[Auth Redirect Callback] Base URL:', baseUrl);
+
+      let decodedUrl = url;
+      try {
+        // 尝试解码，以处理像 '%2Fdashboard' 这样的输入
+        decodedUrl = decodeURIComponent(url);
+      } catch (e) {
+        console.warn('[Auth Redirect Callback] Failed to decode URL component:', url, e);
+        // 如果解码失败（例如url不是有效的编码字符串），则按原样使用url
+      }
+      console.log('[Auth Redirect Callback] Decoded URL (if applicable):', decodedUrl);
+
+      // 如果解码后的 url 是以 '/' 开头的相对路径
+      if (decodedUrl.startsWith('/')) {
+        const finalUrl = `${baseUrl}${decodedUrl}`;
+        console.log('[Auth Redirect Callback] Decoded URL is relative, returning:', finalUrl);
+        return finalUrl;
+      }
+      
+      // 检查原始的 url (在解码尝试之前) 是否是绝对URL且与baseUrl同源
+      try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.origin === new URL(baseUrl).origin) {
+          console.log('[Auth Redirect Callback] Original URL is absolute and matches baseUrl origin, returning:', url);
+          return url;
+        }
+      } catch (e) {
+        // url 不是一个有效的绝对URL，继续检查解码后的URL
+      }
+
+      // 如果解码后的 url (decodedUrl) 也是一个有效的绝对URL并且与baseUrl同源
+      // 这种情况可能在 url 本身就是 'https://...' 但包含了需要解码的查询参数时发生
+      try {
+        const parsedDecodedUrl = new URL(decodedUrl);
+        if (parsedDecodedUrl.origin === new URL(baseUrl).origin) {
+          console.log('[Auth Redirect Callback] Decoded URL is absolute and matches baseUrl origin, returning:', decodedUrl);
+          return decodedUrl;
+        }
+      } catch (e) {
+        // decodedUrl 也不是一个有效的绝对URL
+      }
+
+      console.log('[Auth Redirect Callback] URL is external or unexpected, or became invalid after decode. Defaulting to baseUrl:', baseUrl);
+      return baseUrl; // 默认回到 baseUrl 或登录页，作为安全回退
+    },
     async jwt({ token, user, account }) {
       // 初始登录时，添加用户数据到token
       if (user) {
@@ -139,7 +186,7 @@ export const authOptions: NextAuthOptions = {
       name: `next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: "none",
         path: "/",
         secure: true
       },
@@ -148,7 +195,7 @@ export const authOptions: NextAuthOptions = {
       name: `next-auth.callback-url`,
       options: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: "none",
         path: "/",
         secure: true
       },
@@ -157,7 +204,7 @@ export const authOptions: NextAuthOptions = {
       name: `next-auth.csrf-token`,
       options: {
         httpOnly: true,
-        sameSite: "lax",
+        sameSite: "none",
         path: "/",
         secure: true
       },

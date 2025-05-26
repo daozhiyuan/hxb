@@ -65,6 +65,9 @@ function isRateLimited(ip: string, limit: number): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
+  console.log('[Middleware] Processing request for:', pathname);
+  console.log('[Middleware] Request Headers:', Object.fromEntries(request.headers.entries()));
+
   // 公共路径列表 - 这些路径无需认证
   const publicPaths = ['/', '/login', '/register', '/auth', '/api/auth', '/favicon.ico', '/_next'];
   
@@ -95,7 +98,6 @@ export async function middleware(request: NextRequest) {
       const limit = pathname === '/api/health' ? HEALTH_RATE_LIMIT : API_RATE_LIMIT;
       
       if (isRateLimited(ip, limit)) {
-        // 返回429状态码表示请求过多
         return new NextResponse(
           JSON.stringify({
             success: false,
@@ -121,45 +123,76 @@ export async function middleware(request: NextRequest) {
   }
 
   // 获取JWT令牌以验证用户身份
-  const token = await getToken({ req: request });
+  console.log('[Middleware] Processing request for:', pathname);
+  console.log('[Middleware] Request Headers:', Object.fromEntries(request.headers.entries()));
+  
+  const cookieName = 'next-auth.session-token'; // 与 authOptions 中定义的 cookie 名称一致
+    
+  // 在生产环境中，cookie 应该是 secure 的
+  // next-auth 内部会根据 secure: true 和 sameSite: "none" 正确处理
+  // const isSecureCookie = process.env.NODE_ENV === 'production'; // getToken v4 会自动处理 secure
+
+  const token = await getToken({ 
+    req: request, 
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName: cookieName, // 明确指定 cookie 名称
+  });
+  
+  console.log('[Middleware] Token status:', token ? 'Found' : 'Not found');
+  if (token) {
+    console.log('[Middleware] Token details:', { 
+      role: token.role,
+      email: token.email,
+    });
+  }
 
   // 如果用户未登录，重定向到登录页
   if (!token) {
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3005';
-    const url = new URL('/login', baseUrl);
-    url.searchParams.set('callbackUrl', pathname);
-    return NextResponse.redirect(url);
+    console.log('[Middleware] Token not found, redirecting to login.');
+    const baseUrl = process.env.NEXTAUTH_URL || 'https://bb.keti.eu.org';
+    const loginUrl = new URL('/login', baseUrl);
+    
+    // 确保回调URL是完整的路径
+    const fullPath = request.nextUrl.pathname + request.nextUrl.search;
+    loginUrl.searchParams.set('callbackUrl', fullPath);
+    
+    console.log('[Middleware] Redirecting to:', loginUrl.toString());
+    
+    const response = NextResponse.redirect(loginUrl);
+    response.headers.set('X-Debug-Middleware-Token', 'not-found');
+    return response;
   }
 
   // 针对特定路径的角色检查
   const role = token.role as string;
+  console.log('[Middleware] Checking role access:', { path: pathname, role });
 
-  // 管理员路由检查 - 只有管理员和超级管理员可以访问
+  // 管理员路由检查
   if (pathname.startsWith('/admin')) {
     if (role !== Role.ADMIN && role !== Role.SUPER_ADMIN) {
+      console.log('[Middleware] Access denied to admin route');
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
     
     // 超级管理员专用路径
     if ((pathname.startsWith('/admin/super') || pathname.startsWith('/admin/tools')) && role !== Role.SUPER_ADMIN) {
+      console.log('[Middleware] Access denied to super admin route');
       return NextResponse.redirect(new URL('/unauthorized', request.url));
     }
   }
 
-  // 允许任何已登录用户访问申诉提交页面
-  // 之前的代码: 合作伙伴路由检查
-  // if (pathname.startsWith('/appeals/submit') && role !== 'PARTNER') {
-  //   return NextResponse.redirect(new URL('/unauthorized', request.url));
-  // }
-
-  // 用户已登录且有适当的权限，允许访问
+  console.log('[Middleware] Access granted');
   return NextResponse.next();
 }
 
-// 中间件配置，只对API请求和页面请求应用
+// 中间件配置，只对API请求和需要认证的页面请求应用
 export const config = {
   matcher: [
     '/api/:path*',
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/dashboard',
+    '/dashboard/:path*',
+    '/admin/:path*',
+    '/appeals/submit',
+    // 添加其他需要认证的路径
   ],
 }; 

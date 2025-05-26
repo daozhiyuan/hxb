@@ -4,7 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.DATABASE_URL || "mysql://crmuser:crmpassword@localhost:3306/crm"
+      url: process.env.DATABASE_URL || "mysql://root:password@db:3306/nextn"
     }
   }
 });

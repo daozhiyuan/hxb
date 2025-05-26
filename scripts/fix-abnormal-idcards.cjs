@@ -8,10 +8,10 @@ require('dotenv').config();
 
 // 数据库配置
 const dbConfig = {
-  host: 'localhost',
-  user: 'crmuser',
-  password: 'crmpassword',
-  database: 'crm',
+  host: process.env.DB_HOST || 'db',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'password',
+  database: process.env.DB_NAME || 'nextn',
 };
 
 // 需要检测的文件

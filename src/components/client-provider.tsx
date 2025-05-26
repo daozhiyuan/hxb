@@ -95,20 +95,18 @@ export function ClientProvider({
       } : null
     });
 
-    // 需要认证但未认证时重定向到登录页
+    // 需要认证但未认证时，依赖中间件进行重定向
     if (requireAuth && status === 'unauthenticated') {
-      console.log('[ClientProvider] 未认证，重定向到登录页');
-      window.location.href = '/login';
+      console.log('[ClientProvider] 未认证，依赖中间件重定向');
+      // 注意：此处不再执行 client-side redirect，交由 middleware 处理
       return;
     }
 
     // 只有在已认证的情况下才检查角色
     if (status === 'authenticated') {
-      // 安全地访问会话用户角色，添加可选链和默认值
       const userRole = session?.user?.role || '';
       const userId = session?.user?.id;
       
-      // 输出调试信息，帮助排查会话问题
       console.log('[ClientProvider] 认证会话信息:', {
         userId,
         userRole,
@@ -116,28 +114,25 @@ export function ClientProvider({
         isSessionRepairing
       });
       
-      // 如果用户ID无效且需要认证，则可能是会话损坏
       if (requireAuth && !userId && sessionAttempts >= 3) {
-        console.error('[ClientProvider] 用户已认证但ID缺失，会话可能损坏');
-        window.location.href = '/login';
+        console.error('[ClientProvider] 用户已认证但ID缺失，会话可能损坏，依赖中间件重定向');
+        // 注意：此处不再执行 client-side redirect，交由 middleware 处理
         return;
       }
       
-      // 需要超级管理员权限但用户不是超级管理员
       if (requireSuperAdmin && userRole !== 'SUPER_ADMIN') {
         console.log('[ClientProvider] 需要超级管理员权限，重定向到未授权页面');
-        window.location.href = '/unauthorized';
+        router.push('/unauthorized');
         return;
       }
       
-      // 需要管理员权限但用户既不是管理员也不是超级管理员
       if (requireAdmin && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
         console.log('[ClientProvider] 需要管理员权限，重定向到未授权页面');
-        window.location.href = '/unauthorized';
+        router.push('/unauthorized');
         return;
       }
     }
-  }, [status, requireAuth, requireAdmin, requireSuperAdmin, router, mounted, session, sessionAttempts, isSessionRepairing]);
+  }, [status, requireAuth, requireAdmin, requireSuperAdmin, mounted, session, sessionAttempts, isSessionRepairing, router]); // 添加 router 到依赖项，但需谨慎处理其副作用
 
   // 处理初始加载状态
   if (!mounted || status === 'loading') {

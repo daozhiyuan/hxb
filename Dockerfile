@@ -1,63 +1,43 @@
-FROM node:20-alpine AS base
+FROM node:18-alpine AS builder
 
-# 安装必要的工具包
-RUN apk add --no-cache curl wget bash
-
-# Install dependencies only when needed
-FROM base AS deps
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json ./
+# 复制 package.json 和 package-lock.json
+COPY package*.json ./
 
-# Install dependencies
+# 安装依赖
 RUN npm ci
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# 复制源代码
 COPY . .
 
-# Generate Prisma client
+# 设置环境变量
+ENV NEXTAUTH_URL=https://bb.keti.eu.org
+ENV NEXT_PUBLIC_APP_URL=https://bb.keti.eu.org
+
+# 生成 Prisma Client (确保在构建前完成)
 RUN npx prisma generate
 
-# Build the Next.js application
+# 构建应用
 RUN npm run build
 
-# Production image, copy all the files and run next
-FROM base AS runner
+# 生产环境镜像
+FROM node:18-alpine AS runner
+
 WORKDIR /app
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
+ENV NEXTAUTH_URL=https://bb.keti.eu.org
+ENV NEXT_PUBLIC_APP_URL=https://bb.keti.eu.org
 
-# 创建上传目录和日志目录
-RUN mkdir -p /app/public/uploads /app/logs \
-    && chmod 777 /app/public/uploads /app/logs
-
-# Set a non-root user for better security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    chown -R nextjs:nodejs /app/public/uploads /app/logs
-
+# 复制必要文件
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Copy start script and make it executable
-COPY docker-entrypoint.sh ./
-RUN chmod +x docker-entrypoint.sh
+EXPOSE 3000
 
-USER nextjs
-
-EXPOSE 3005
-
-# 添加健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD wget --spider http://localhost:3005 || exit 1
-
-# Start the application with the entry point script
-ENTRYPOINT ["./docker-entrypoint.sh"] 
+CMD ["node", "server.js"] 

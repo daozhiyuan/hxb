@@ -29,7 +29,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <head />
+      <head>
+        <meta charSet="utf-8" />
+      </head>
       <body className={inter.className}>
         <Providers>
           <div className="flex min-h-screen flex-col">

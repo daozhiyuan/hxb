@@ -92,19 +92,30 @@ function LoginContent() {
         return;
       }
 
-      console.log(`[Login] 登录成功, 准备跳转到: ${result.url || callbackUrl}`);
+      const redirectUrl = result.url || callbackUrl;
+      console.log(`[Login] 登录成功, 准备跳转到: ${redirectUrl}`);
+      console.log('[Login] 当前URL:', window.location.href);
+      console.log('[Login] 重定向URL:', redirectUrl);
+
+      // 显示成功提示
       toast({
         title: '登录成功',
         description: '正在跳转...',
       });
 
-      // 使用setTimeout延迟跳转，确保toast能够显示
+      // 确保重定向URL是绝对路径
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+      const fullRedirectUrl = redirectUrl.startsWith('http') 
+        ? redirectUrl 
+        : `${baseUrl}${redirectUrl.startsWith('/') ? '' : '/'}${redirectUrl}`;
+      
+      console.log('[Login] 完整重定向URL:', fullRedirectUrl);
+
+      // 使用延时确保toast消息能够显示
       setTimeout(() => {
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bb.ceoedu.eu.org';
-        const targetUrl = result.url || callbackUrl;
-        const fullUrl = targetUrl.startsWith('http') ? targetUrl : `${baseUrl}${targetUrl}`;
-        window.location.href = fullUrl;
-      }, 500);
+        console.log('[Login] 执行重定向...');
+        window.location.href = fullRedirectUrl;
+      }, 1000);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '登录过程中发生错误';
       console.error(`[Login] 异常: ${errorMessage}`);

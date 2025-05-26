@@ -2,20 +2,23 @@ import { PrismaClient } from '@prisma/client';
 
 // 明确指定数据库连接信息
 const prismaClientSingleton = () => {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
+
   return new PrismaClient({
     datasources: {
       db: {
-        url: process.env.DATABASE_URL || "mysql://crmuser:crmpassword@localhost:3306/crm?connection_limit=5&pool_timeout=0&authentication_plugin=mysql_native_password"
+        url: databaseUrl
       }
     },
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
 };
 
-type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
-
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClientSingleton | undefined;
+  prisma: ReturnType<typeof prismaClientSingleton> | undefined;
 };
 
 const prisma = globalForPrisma.prisma ?? prismaClientSingleton();

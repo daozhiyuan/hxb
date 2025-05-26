@@ -93,5 +93,6 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.19.3",
     "typescript": "^5"
-  }
+  },
+  "notes": "部署时请在.env文件中设置NEXT_PUBLIC_APP_URL=https://bb.keti.eu.org，确保前端跳转和API请求使用域名。"
 }

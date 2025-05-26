@@ -6,7 +6,7 @@ declare global {
 }
 
 // 从环境变量获取数据库连接字符串
-const databaseUrl = process.env.DATABASE_URL || "mysql://root:password@localhost:3306/crm_db";
+const databaseUrl = process.env.DATABASE_URL || "mysql://root:password@db:3306/nextn";
 
 // Prevent multiple instances of Prisma Client in development
 const prisma = global.prisma || new PrismaClient({

@@ -37,8 +37,8 @@ const nextConfig = {
   },
   // 环境变量配置
   env: {
-    NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    NEXTAUTH_URL: 'https://bb.keti.eu.org',
+    NEXT_PUBLIC_APP_URL: 'https://bb.keti.eu.org'
   },
   // 禁用图片优化，避免静态生成问题
   images: {

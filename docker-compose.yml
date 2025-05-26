@@ -1,80 +1,49 @@
 version: '3.8'
 
 services:
-  # MySQL service
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXTAUTH_URL=https://bb.keti.eu.org
+      - NEXT_PUBLIC_APP_URL=https://bb.keti.eu.org
+      - NEXTAUTH_SECRET=ufZdI4ReTqpiWg+AGAEdxr8K+eRDsHNVXYlSC96AfRo=
+      - DATABASE_URL=mysql://root:password@db:3306/hxb
+      - SESSION_SECRET=ufZdI4ReTqpiWg+AGAEdxr8K+eRDsHNVXYlSC96AfRo=
+      - COOKIE_SECRET=ufZdI4ReTqpiWg+AGAEdxr8K+eRDsHNVXYlSC96AfRo=
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    networks:
+      - app-network
+
   db:
     image: mysql:8.0
-    restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: nextn
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=hxb
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
     ports:
       - "3307:3306"
-    volumes:
-      - mysql-data:/var/lib/mysql
-      - ./mysql-init:/docker-entrypoint-initdb.d
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
-  # Next.js application
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: always
-    ports:
-      - "3007:3000"
-    volumes:
-      - ./public/uploads:/app/public/uploads
-      - ./logs:/app/logs
-      - ./src:/app/src
-      - ./.env:/app/.env
-    environment:
-      - DATABASE_URL=mysql://root:password@db:3306/nextn
-      - NEXTAUTH_SECRET=LLwTqhMaKvmhLxsM4SRs+GJ8cZ71eHdQ
-      - NEXTAUTH_URL=http://localhost:3007
-      - NODE_ENV=production
-      - ENCRYPTION_KEY=1ZACHw0/coS8sknni7E+PRvvaZ9UMv/K1cQvMDA4fnU=
-      - OLD_ENCRYPTION_KEY=your_optional_old_encryption_key
-    depends_on:
-      db:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:3005/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Backup service
-  backup:
-    image: mysql:8.0
-    volumes:
-      - mysql-data:/var/lib/mysql:ro
-      - ./backups:/backups
-    environment:
-      - MYSQL_PWD=password
-    command: >
-      bash -c '
-      while true; do
-        BACKUP_FILE="/backups/nextn_$$(date +"%Y%m%d_%H%M%S").sql";
-        mysqldump -h db -u root nextn > $$BACKUP_FILE;
-        echo "数据库备份完成: $$BACKUP_FILE";
-        find /backups -name "nextn_*.sql" -type f -mtime +7 -delete;
-        echo "已删除7天前的旧备份";
-        sleep 86400;
-      done
-      '
-    depends_on:
-      db:
-        condition: service_healthy
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
-  mysql-data: 
-  
-networks:
-  default:
-    driver: bridge 
+  mysql_data: 

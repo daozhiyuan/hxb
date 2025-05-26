@@ -145,6 +145,7 @@ model Customer {
   @@unique([partnerId, idNumberHash])
   @@index([partnerId])
   @@index([status])
+  @@map("customers")
 }
 
 model CustomerToCustomerTag {
