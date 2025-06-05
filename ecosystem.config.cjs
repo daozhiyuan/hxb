@@ -1,14 +1,15 @@
 module.exports = {
   apps : [{
     name: 'crm-system',
-    script: 'node_modules/next/dist/bin/next',
-    args: 'start -p 3005',
+    script: 'npm',
+    args: 'run dev',
     instances: 1,
     autorestart: true,
     watch: false,
     max_memory_restart: '1G',
     env: {
-      NODE_ENV: 'production'
+      NODE_ENV: 'development',
+      PORT: '3000'
     }
   }]
 }; 

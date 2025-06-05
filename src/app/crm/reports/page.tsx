@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { isAdmin } from '@/lib/auth-helpers';
+import { CustomerStatusText, CustomerStatus } from '@/config/client-config';
 
 // 禁用静态生成和 RSC 预取
 export const dynamic = 'force-dynamic';
@@ -173,7 +174,7 @@ export default function CRMReportsPage() {
                     <div className="space-y-2">
                       {Object.entries(customerData.statusStatistics || {}).map(([status, count]) => (
                         <div key={status} className="flex justify-between">
-                          <span>{status}</span>
+                          <span>{CustomerStatusText[status as CustomerStatus] || status}</span>
                           <span className="font-medium">{String(count)}</span>
                         </div>
                       ))}
