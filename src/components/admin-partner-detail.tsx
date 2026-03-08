@@ -73,12 +73,12 @@ export function AdminPartnerDetail({ partnerId }: PartnerDetailProps) {
   // 处理表单变更
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setPartnerData(prev => ({ ...prev, [name]: value }));
+    setPartnerData((prev: any) => ({ ...prev, [name]: value }));
   };
 
   // 处理开关切换
   const handleSwitchChange = (name: string, checked: boolean) => {
-    setPartnerData(prev => ({ ...prev, [name]: checked }));
+    setPartnerData((prev: any) => ({ ...prev, [name]: checked }));
   };
 
   // 保存合作伙伴数据

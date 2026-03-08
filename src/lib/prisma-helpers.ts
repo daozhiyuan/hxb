@@ -86,11 +86,12 @@ export async function getSafeCustomersList(options: {
     const orderClause = ` ORDER BY ${actualSortBy} ${actualSortOrder}`;
     const limitClause = ` LIMIT ? OFFSET ?`;
     const dataQuery = `SELECT * FROM Customer${whereClause}${orderClause}${limitClause}`;
-    const customers = await prisma.$queryRawUnsafe(dataQuery, ...params, pageSize, skip);
+    const customers = await prisma.$queryRawUnsafe<any[]>(dataQuery, ...params, pageSize, skip);
+    const customerRows = Array.isArray(customers) ? customers : [];
     
     // 批量解密证件号
     const { decryptIdCard } = await import('./encryption');
-    const processedCustomers = (customers || []).map((customer: any) => ({
+    const processedCustomers = customerRows.map((customer: any) => ({
       ...customer,
       // 确保registrationDate存在
       registrationDate: customer.createdAt || null,
@@ -273,14 +274,16 @@ export async function getSafeCustomerFollowUps(options: {
       })
     );
     
+    const followUpsList = Array.isArray(followUps) ? followUps : [];
+
     if (followUpsError) {
       console.error(`[getSafeCustomerFollowUps] 获取跟进记录失败: ${followUpsError.message}`, followUpsError);
     } else {
-      console.log(`[getSafeCustomerFollowUps] 成功获取 ${followUps?.length || 0} 条跟进记录`);
+      console.log(`[getSafeCustomerFollowUps] 成功获取 ${followUpsList.length} 条跟进记录`);
     }
 
     // 获取总数
-    const { data: total, error: totalError } = await safeQuery(() => 
+    const { data: total, error: totalError } = await safeQuery<number>(() => 
       prisma.followUp.count({ where: { customerId } })
     );
     
@@ -288,15 +291,16 @@ export async function getSafeCustomerFollowUps(options: {
       console.error(`[getSafeCustomerFollowUps] 获取总数失败: ${totalError.message}`, totalError);
     }
 
-    const totalPages = Math.ceil((total || 0) / pageSize);
-    console.log(`[getSafeCustomerFollowUps] 总记录数: ${total || 0}, 总页数: ${totalPages}`);
+    const totalCount = typeof total === 'number' ? total : 0;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    console.log(`[getSafeCustomerFollowUps] 总记录数: ${totalCount}, 总页数: ${totalPages}`);
 
     return {
-      data: followUps || [],
+      data: followUpsList,
       pagination: {
         page,
         pageSize,
-        total: total || 0,
+        total: totalCount,
         totalPages
       }
     };
@@ -352,7 +356,7 @@ export async function safeCreateFollowUp(data: {
     console.log(`[safeCreateFollowUp] 参数验证通过，准备事务操作`);
     // 使用纯SQL方式创建记录，完全绕过Prisma模型的自动映射
     // 这是最安全的方法，可以避免模型与数据库不一致的问题
-    const createdFollowUpId = await prisma.$transaction(async (tx) => {
+    const createdFollowUpId = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       try {
         // Step 1: 插入记录
         console.log(`[safeCreateFollowUp] 执行SQL插入: (${content}, ${customerId}, ${createdById}, ${type})`);

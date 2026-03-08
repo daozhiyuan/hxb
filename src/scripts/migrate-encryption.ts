@@ -16,7 +16,7 @@ async function migrateCustomerData() {
   
   const customers = await prisma.customer.findMany({
     where: {
-      idCardNumberEncrypted: {
+      idNumber: {
         not: null
       }
     }
@@ -29,13 +29,13 @@ async function migrateCustomerData() {
 
   for (const customer of customers) {
     try {
-      if (!customer.idCardNumberEncrypted) continue;
-      const decrypted = decryptIdCard(customer.idCardNumberEncrypted);
+      if (!customer.idNumber) continue;
+      const decrypted = decryptIdCard(customer.idNumber);
       if (decrypted && !decrypted.startsWith('[')) {
         const reencrypted = encryptIdCard(decrypted);
         await prisma.customer.update({
           where: { id: customer.id },
-          data: { idCardNumberEncrypted: reencrypted }
+          data: { idNumber: reencrypted }
         });
         successCount++;
       } else {

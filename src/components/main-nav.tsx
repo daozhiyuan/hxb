@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export function MainNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const { data: session } = useSession();
   const userRole = session?.user?.role;
   
