@@ -78,14 +78,14 @@ export async function getSafeCustomersList(options: {
     }
     
     // 执行计数查询
-    const countQuery = `SELECT COUNT(*) as total FROM Customer${whereClause}`;
+    const countQuery = `SELECT COUNT(*) as total FROM customers${whereClause}`;
     const countResult = await prisma.$queryRawUnsafe<[{total: number}]>(countQuery, ...params);
     const total = Number(countResult[0]?.total || 0);
     
     // 执行数据查询
     const orderClause = ` ORDER BY ${actualSortBy} ${actualSortOrder}`;
     const limitClause = ` LIMIT ? OFFSET ?`;
-    const dataQuery = `SELECT * FROM Customer${whereClause}${orderClause}${limitClause}`;
+    const dataQuery = `SELECT * FROM customers${whereClause}${orderClause}${limitClause}`;
     const customers = await prisma.$queryRawUnsafe<any[]>(dataQuery, ...params, pageSize, skip);
     const customerRows = Array.isArray(customers) ? customers : [];
     
@@ -455,7 +455,7 @@ export async function safeFindCustomerByIdCardHash(idCardHash: string) {
     try {
       const result = await prisma.$queryRaw<{id: number, partnerId: number}[]>`
         SELECT id, partnerId 
-        FROM Customer 
+        FROM customers 
         WHERE idNumberHash = ${idCardHash} 
         LIMIT 1;
       `;
@@ -490,7 +490,7 @@ export async function safeCheckDuplicateCustomer(idCardHash: string) {
     try {
       const result = await prisma.$queryRaw<{count: number}[]>`
         SELECT COUNT(*) as count 
-        FROM Customer 
+        FROM customers 
         WHERE idNumberHash = ${idCardHash};
       `;
       

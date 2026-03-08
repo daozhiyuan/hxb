@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   web:
     build:
@@ -15,6 +13,12 @@ services:
       - DATABASE_URL=mysql://root:password@db:3306/hxb
       - SESSION_SECRET=ufZdI4ReTqpiWg+AGAEdxr8K+eRDsHNVXYlSC96AfRo=
       - COOKIE_SECRET=ufZdI4ReTqpiWg+AGAEdxr8K+eRDsHNVXYlSC96AfRo=
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=password
+      - DB_NAME=hxb
+      - SEED_ON_EMPTY_DB=true
     depends_on:
       db:
         condition: service_healthy
@@ -46,4 +50,4 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data: 
+  mysql_data:

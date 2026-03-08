@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@/lib/prisma';
-import { Role, AppealStatus, Appeal } from '@prisma/client';
+import { Role, AppealStatus, Prisma } from '@prisma/client';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
@@ -82,10 +82,12 @@ export async function GET(request: Request) {
       '备注'
     ].join(',');
 
-    const rows = appeals.map((appeal: Appeal & {
-      partner: { name: string; email: string };
-      operator?: { name: string; email: string };
-    }) => {
+    const rows = appeals.map((appeal: Prisma.AppealGetPayload<{
+      include: {
+        partner: { select: { name: true; email: true } };
+        operator: { select: { name: true; email: true } };
+      };
+    }>) => {
       const statusMap: Record<AppealStatus, string> = {
         [AppealStatus.PENDING]: '待处理',
         [AppealStatus.PROCESSING]: '处理中',
@@ -99,7 +101,7 @@ export async function GET(request: Request) {
         `"${appeal.reason.replace(/"/g, '""')}"`,
         statusMap[appeal.status],
         format(new Date(appeal.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN }),
-        appeal.partner.name,
+        appeal.partner.name || '-',
         appeal.operator?.name || '-',
         appeal.status !== AppealStatus.PENDING ? format(new Date(appeal.updatedAt), 'yyyy-MM-dd HH:mm:ss', { locale: zhCN }) : '-',
         `"${(appeal.remarks || '').replace(/"/g, '""')}"`

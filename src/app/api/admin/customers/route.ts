@@ -73,11 +73,11 @@ export async function GET(request: Request) {
     
     // 为超级管理员解密证件号码
     const processedCustomers = await Promise.all(customers.map(async (customer) => {
-      let processedCustomer = { ...customer };
+      const processedCustomer = { ...customer } as typeof customer & { decryptedIdCardNumber: string };
       let decryptedIdCardNumber = '';
-      if (isSuperAdmin(session) && customer.idCardNumberEncrypted) {
+      if (isSuperAdmin(session) && customer.idNumber) {
         try {
-          decryptedIdCardNumber = decryptIdCard(customer.idCardNumberEncrypted);
+          decryptedIdCardNumber = decryptIdCard(customer.idNumber);
           if (
             decryptedIdCardNumber.includes('解密失败') ||
             decryptedIdCardNumber.includes('格式错误') ||

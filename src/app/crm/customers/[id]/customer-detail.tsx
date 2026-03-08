@@ -70,6 +70,7 @@ interface Customer {
     color: string;
   }>;
   idCardType?: string;
+  idNumber?: string | null;
   registrationDate?: string;
 }
 
@@ -592,7 +593,7 @@ export default function CustomerDetail({ params }: { params: { id: string } }) {
                           <ShieldAlert className="h-4 w-4 mr-1 text-yellow-500" />
                           身份证号码 (仅超级管理员可见)
                         </div>
-                        <IdNumberDisplay idNumber={customer.idCardNumberEncrypted} decryptedIdCardNumber={decryptedIdCardNumber} />
+                        <IdNumberDisplay idNumber={customer.idNumber || ''} decryptedIdCardNumber={decryptedIdCardNumber} />
                         {!decryptedIdCardNumber && (
                           <Button
                             variant="outline"

@@ -41,15 +41,15 @@ export async function GET(
 //       return NextResponse.json({ error: '没有权限查看此客户' }, { status: 403 });
 //     }
     
-    // 如果是超级管理员，解密身份证号码
+    // 如果是超级管理员，解密证件号码
     let decryptedIdCardNumber = '';
     if (userRole === 'SUPER_ADMIN') {
       try {
-        decryptedIdCardNumber = customer.idCardNumberEncrypted 
-          ? decryptIdCard(customer.idCardNumberEncrypted) 
+        decryptedIdCardNumber = customer.idNumber
+          ? decryptIdCard(customer.idNumber)
           : '';
       } catch (error) {
-        console.error("解密身份证号码失败:", error);
+        console.error("解密证件号码失败:", error);
         decryptedIdCardNumber = '[解密失败]';
       }
     }
@@ -105,20 +105,19 @@ export async function PATCH(
     // 安全地提取可更新的字段
     const updateData: any = {};
     
-    // 定义允许更新的字段
+    // 定义允许更新的字段（按当前 Customer schema）
     const allowedFields = [
-      'name', 'companyName', 'phone', 'email', 'status', 
-      'notes', 'address', 'jobTitle', 'lastYearRevenue'
+      'name', 'phone', 'email', 'status',
+      'notes', 'address', 'jobTitle', 'industry', 'source'
     ];
     
-    // 超级管理员可以更新身份证号码
-    if (isSuperAdmin(session) && body.idNumber) {
+    // 超级管理员可以更新证件号码
+    if (isSuperAdmin(session) && body.idNumber !== undefined) {
       try {
-        // 存储加密的身份证号码
-        updateData.idCardNumberEncrypted = body.idNumber;
+        updateData.idNumber = body.idNumber;
       } catch (error) {
-        console.error("处理身份证号码失败:", error);
-        return NextResponse.json({ error: "更新身份证号码失败" }, { status: 500 });
+        console.error("处理证件号码失败:", error);
+        return NextResponse.json({ error: "更新证件号码失败" }, { status: 500 });
       }
     }
     
@@ -136,20 +135,27 @@ export async function PATCH(
       select: {
         id: true,
         name: true,
-        companyName: true,
         phone: true,
         email: true,
         status: true,
         notes: true,
-        registrationDate: true,
+        createdAt: true,
         updatedAt: true,
         jobTitle: true,
         address: true,
-        lastYearRevenue: true
+        industry: true,
+        source: true,
+        idCardType: true,
+        idNumber: true,
+        idNumberHash: true,
+        partnerId: true,
       }
     });
     
-    return NextResponse.json(updatedCustomer);
+    return NextResponse.json({
+      ...updatedCustomer,
+      registrationDate: updatedCustomer.createdAt,
+    });
   } catch (error) {
     console.error("更新客户信息失败:", error);
     return NextResponse.json({ error: "更新客户信息失败" }, { status: 500 });
