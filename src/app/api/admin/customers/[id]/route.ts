@@ -36,13 +36,40 @@ export async function GET(
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
       include: {
-        partner: true,
+        partner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          }
+        },
         followUps: {
           orderBy: {
             createdAt: 'desc'
+          },
+          select: {
+            id: true,
+            content: true,
+            createdAt: true,
+            customerId: true,
+            createdById: true,
+            type: true,
+            createdBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
+            }
           }
         },
-        tags: true
+        tags: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+          }
+        }
       }
     });
 

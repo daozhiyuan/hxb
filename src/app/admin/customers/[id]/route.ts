@@ -25,7 +25,7 @@ export async function GET(
       return NextResponse.json({ error: '无效的客户ID' }, { status: 400 });
     }
     
-    // 使用安全查询辅助函数获取客户详情
+    // 使用安全查询辅助函数获取客户详情（避免暴露 partner 敏感字段）
     const customer = await getSafeCustomerDetails(customerId);
     
     if (!customer) {
@@ -54,9 +54,37 @@ export async function GET(
       }
     }
     
-    // 返回带有解密身份证号码的结果
+    const safePartner = customer.partner
+      ? {
+          id: customer.partner.id,
+          name: customer.partner.name,
+          email: customer.partner.email,
+        }
+      : null;
+
+    const safeFollowUps = Array.isArray(customer.followUps)
+      ? customer.followUps.map((followUp: any) => ({
+          id: followUp.id,
+          content: followUp.content,
+          createdAt: followUp.createdAt,
+          customerId: followUp.customerId,
+          createdById: followUp.createdById,
+          type: followUp.type,
+          createdBy: followUp.createdBy
+            ? {
+                id: followUp.createdBy.id,
+                name: followUp.createdBy.name,
+                email: followUp.createdBy.email,
+              }
+            : null,
+        }))
+      : [];
+
+    // 返回带有解密身份证号码的结果（显式裁剪敏感关联字段）
     return NextResponse.json({
       ...customer,
+      partner: safePartner,
+      followUps: safeFollowUps,
       decryptedIdCardNumber: userRole === 'SUPER_ADMIN' ? decryptedIdCardNumber : '',
     });
   } catch (error) {
