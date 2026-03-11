@@ -45,6 +45,16 @@ else
   cp /app/keys/private.pem /app/.next/standalone/keys/private.pem
 fi
 
+# Ensure Next.js standalone runtime can serve static assets
+if [ ! -d /app/.next/standalone/.next/static ]; then
+  echo "Linking standalone static assets..."
+  mkdir -p /app/.next/standalone/.next
+  if [ ! -e /app/.next/standalone/.next/static ]; then
+    ln -s /app/.next/static /app/.next/standalone/.next/static 2>/dev/null \
+      || cp -r /app/.next/static /app/.next/standalone/.next/static
+  fi
+fi
+
 count=0
 until mariadb-admin ping ${MYSQL_ARGS} --silent; do
   count=$((count + 1))
