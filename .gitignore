@@ -50,6 +50,9 @@ logs/
 # uploads
 public/uploads/
 
+# downloads
+public/downloads/
+
 # backups
 backups/
 *.sql

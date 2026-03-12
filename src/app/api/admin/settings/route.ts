@@ -73,31 +73,33 @@ const saveSettings = (settings: any) => {
 };
 
 /**
- * GET: 获取系统设置 - 允许所有用户访问
+ * GET: 获取系统设置 - 仅限超级管理员
  */
 export async function GET(request: Request) {
   try {
-    // 获取系统设置
+    const session = await getServerSession(authOptions);
+
+    if (!isSuperAdmin(session)) {
+      return NextResponse.json({ message: '需要超级管理员权限' }, { status: 403 });
+    }
+
     const settings = getSettings();
-    
-    // 返回公开设置信息并设置缓存控制
+
     return NextResponse.json(
       {
         systemName: settings.systemName,
         logoUrl: settings.logoUrl,
         primaryColor: settings.primaryColor,
+        enableNotifications: settings.enableNotifications,
         defaultLanguage: settings.defaultLanguage,
+        dataRetentionDays: settings.dataRetentionDays,
+        maintenanceMode: settings.maintenanceMode,
+        debugMode: settings.debugMode,
         copyright: settings.copyright,
         companyName: settings.companyName,
         icp: settings.icp,
       },
-      {
-        status: 200,
-        headers: {
-          // 设置缓存 5 分钟
-          'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
-        }
-      }
+      { status: 200 }
     );
   } catch (error) {
     console.error('获取系统设置失败:', error);

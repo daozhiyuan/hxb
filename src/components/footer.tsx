@@ -29,7 +29,7 @@ export function Footer() {
       
       try {
         setIsLoading(true);
-        const response = await fetch('/api/admin/settings');
+        const response = await fetch('/api/public/settings');
         
         // 确保组件仍然挂载
         if (!isMounted) return;
