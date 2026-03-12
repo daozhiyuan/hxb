@@ -66,3 +66,6 @@ data/
 *.save
 
 .genkit/*
+
+# ignore runtime downloads
+public/downloads/
