@@ -27,6 +27,11 @@ export async function GET(
       return NextResponse.json({ error: '未授权访问' }, { status: 401 });
     }
 
+    // Admin customer detail is privileged: restrict to ADMIN/SUPER_ADMIN only.
+    if (!isAdmin(session) && !isSuperAdmin(session)) {
+      return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
+    }
+
     // 修复：确保id为数字类型
     const customerId = parseInt(params.id, 10);
     if (isNaN(customerId)) {
@@ -163,7 +168,7 @@ export async function PATCH(
         // 如果已经是加密格式，不需要重新加密
         if (body.idNumber.includes(':') && isValidEncryptedFormat(body.idNumber)) {
           console.log(`输入的证件号码是已加密格式，直接使用`);
-          updateData.idCardNumberEncrypted = body.idNumber;
+          updateData.idNumber = body.idNumber;
         }
         // 否则对证件号码进行加密
         else {
@@ -182,15 +187,15 @@ export async function PATCH(
             const normalizedIdNumber = body.idNumber.trim().toUpperCase();
             
             // 加密证件号码
-            updateData.idCardNumberEncrypted = encryptIdCard(normalizedIdNumber);
+            updateData.idNumber = encryptIdCard(normalizedIdNumber);
             
             // 验证加密结果是否有效
-            if (!isValidEncryptedFormat(updateData.idCardNumberEncrypted)) {
+            if (!isValidEncryptedFormat(updateData.idNumber)) {
               throw new Error("生成的加密数据格式无效");
             }
           
-          // 同时更新哈希值用于查询
-            updateData.idCardHash = hashIdCard(normalizedIdNumber, idCardType);
+            // 同时更新哈希值用于查询
+            updateData.idNumberHash = hashIdCard(normalizedIdNumber, idCardType);
           
             console.log(`证件号码加密成功`);
           } catch (encryptError) {
