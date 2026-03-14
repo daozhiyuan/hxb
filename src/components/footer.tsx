@@ -11,7 +11,7 @@ type FooterSettings = {
 
 export function Footer() {
   const [settings, setSettings] = useState<FooterSettings>({
-    copyright: '© 2024 客户管理系统. 保留所有权利。',
+    copyright: '© 2024 航向标. 保留所有权利。',
     companyName: '',
     icp: '',
   });
