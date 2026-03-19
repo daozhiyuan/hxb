@@ -110,7 +110,39 @@ test('SUPER_ADMIN 也可以访问管理员客户详情，并看到敏感字段',
   await ctx.dispose();
 });
 
-test('PARTNER 可访问申诉列表但不能访问管理员能力接口', async ({ baseURL }) => {
+test('ADMIN 与 SUPER_ADMIN 查看申诉详情时字段可见性不同', async ({ baseURL }) => {
+  const adminCtx = await request.newContext({ baseURL });
+  const adminSession = await loginByCredentials(adminCtx, roles.admin);
+  expect(adminSession?.user?.role).toBe('ADMIN');
+
+  const adminAppealRes = await adminCtx.get('/api/appeals/1');
+  expect(adminAppealRes.status()).toBe(200);
+  const adminBody = await adminAppealRes.json();
+  expect(adminBody?.success).toBe(true);
+  expect(adminBody?.data?.id).toBe(1);
+  expect(adminBody?.data?.idNumber).toBeUndefined();
+  expect(adminBody?.data?.idNumberHash).toBeUndefined();
+  expect(adminBody?.data?.partner?.email).toBe('partner@example.com');
+  await adminCtx.dispose();
+
+  const superCtx = await request.newContext({ baseURL });
+  const superSession = await loginByCredentials(superCtx, roles.superadmin);
+  expect(superSession?.user?.role).toBe('SUPER_ADMIN');
+
+  const superAppealRes = await superCtx.get('/api/appeals/1');
+  expect(superAppealRes.status()).toBe(200);
+  const superBody = await superAppealRes.json();
+  expect(superBody?.success).toBe(true);
+  expect(superBody?.data?.id).toBe(1);
+  expect(typeof superBody?.data?.idNumber).toBe('string');
+  expect(superBody?.data?.idNumber.length).toBeGreaterThan(0);
+  expect(typeof superBody?.data?.idNumberHash).toBe('string');
+  expect(superBody?.data?.idNumberHash.length).toBeGreaterThan(0);
+  expect(superBody?.data?.partner?.email).toBe('partner@example.com');
+  await superCtx.dispose();
+});
+
+test('PARTNER 可访问申诉列表与自有申诉详情，但不能访问管理员能力接口', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.partner);
   expect(session?.user?.role).toBe('PARTNER');
@@ -118,6 +150,14 @@ test('PARTNER 可访问申诉列表但不能访问管理员能力接口', async 
   const appealsRes = await ctx.get('/api/appeals?page=1&pageSize=3');
   expect(appealsRes.status()).toBe(200);
 
+  const appealDetailRes = await ctx.get('/api/appeals/1');
+  expect(appealDetailRes.status()).toBe(200);
+  const appealBody = await appealDetailRes.json();
+  expect(appealBody?.success).toBe(true);
+  expect(appealBody?.data?.id).toBe(1);
+  expect(appealBody?.data?.idNumber).toBeUndefined();
+  expect(appealBody?.data?.idNumberHash).toBeUndefined();
+
   const adminCustomersRes = await ctx.get('/api/admin/customers?page=1&pageSize=3');
   expect(adminCustomersRes.status()).toBe(403);
 
@@ -132,7 +172,7 @@ test('PARTNER 可访问申诉列表但不能访问管理员能力接口', async 
   await ctx.dispose();
 });
 
-test('USER 不能访问管理员设置与系统概览 API（应 403）', async ({ baseURL }) => {
+test('USER 不能访问管理员能力，也不能查看申诉详情（应 403）', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.user);
   expect(session?.user?.role).toBe('USER');
@@ -142,18 +182,14 @@ test('USER 不能访问管理员设置与系统概览 API（应 403）', async (
 
   const settingsRes = await ctx.get('/api/admin/settings');
   expect(settingsRes.status()).toBe(403);
-  await ctx.dispose();
-});
-
-test('USER 不能访问管理员客户列表与详情（应 403）', async ({ baseURL }) => {
-  const ctx = await request.newContext({ baseURL });
-  const session = await loginByCredentials(ctx, roles.user);
-  expect(session?.user?.role).toBe('USER');
 
   const adminCustomersRes = await ctx.get('/api/admin/customers?page=1&pageSize=3');
   expect(adminCustomersRes.status()).toBe(403);
 
   const adminCustomerRes = await ctx.get('/api/admin/customers/1');
   expect(adminCustomerRes.status()).toBe(403);
+
+  const appealDetailRes = await ctx.get('/api/appeals/1');
+  expect(appealDetailRes.status()).toBe(403);
   await ctx.dispose();
 });
