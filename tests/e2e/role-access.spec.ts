@@ -58,6 +58,9 @@ test('PARTNER 可访问申诉列表但不能访问管理员能力接口', async 
   const appealsRes = await ctx.get('/api/appeals?page=1&pageSize=3');
   expect(appealsRes.status()).toBe(200);
 
+  const adminCustomersRes = await ctx.get('/api/admin/customers?page=1&pageSize=3');
+  expect(adminCustomersRes.status()).toBe(403);
+
   const adminCustomerRes = await ctx.get('/api/admin/customers/1');
   expect(adminCustomerRes.status()).toBe(403);
 
@@ -82,10 +85,13 @@ test('USER 不能访问管理员设置与系统概览 API（应 403）', async (
   await ctx.dispose();
 });
 
-test('USER 不能访问管理员客户详情（应 403）', async ({ baseURL }) => {
+test('USER 不能访问管理员客户列表与详情（应 403）', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.user);
   expect(session?.user?.role).toBe('USER');
+
+  const adminCustomersRes = await ctx.get('/api/admin/customers?page=1&pageSize=3');
+  expect(adminCustomersRes.status()).toBe(403);
 
   const adminCustomerRes = await ctx.get('/api/admin/customers/1');
   expect(adminCustomerRes.status()).toBe(403);
