@@ -69,3 +69,5 @@ data/
 
 # ignore runtime downloads
 public/downloads/
+playwright-report/
+test-results/

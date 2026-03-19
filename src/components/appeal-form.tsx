@@ -12,9 +12,6 @@ import { Loader2 } from 'lucide-react';
 import { validateIdCard, IdCardType } from '@/lib/client-validation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-// 定义当前应用的BASE_URL，确保与运行的端口一致
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005';
-
 export default function AppealForm() {
   const router = useRouter();
   const { data: session } = useSession();

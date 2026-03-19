@@ -2,7 +2,7 @@
 async function testSession() {
   try {
     console.log('测试NextAuth会话路由...');
-    const response = await fetch('http://localhost:3005/api/auth/session', {
+    const response = await fetch('http://localhost:3000/api/auth/session', {
       method: 'GET',
       headers: {
         'Accept': 'application/json'

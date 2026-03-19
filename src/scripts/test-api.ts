@@ -8,7 +8,7 @@ async function testAPIs() {
   try {
     console.log('===== 测试客户分析API =====');
     // 模拟请求
-    const customerRequest = new Request('http://localhost:3005/api/analytics/customers?period=month');
+    const customerRequest = new Request('http://localhost:3000/api/analytics/customers?period=month');
     const customerResponse = await getCustomersAnalytics(customerRequest);
     
     if (customerResponse.status === 200) {
@@ -23,7 +23,7 @@ async function testAPIs() {
     
     console.log('\n===== 测试用户分析API =====');
     // 模拟请求
-    const userRequest = new Request('http://localhost:3005/api/analytics/users?period=month');
+    const userRequest = new Request('http://localhost:3000/api/analytics/users?period=month');
     const userResponse = await getUsersAnalytics(userRequest);
     
     if (userResponse.status === 200) {

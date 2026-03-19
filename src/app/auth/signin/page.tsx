@@ -3,9 +3,6 @@
 import { useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-// 定义当前应用的BASE_URL，确保与运行的端口一致
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005';
-
 // 创建一个内部组件来使用useSearchParams
 function SignInContent() {
   const router = useRouter();
