@@ -63,6 +63,19 @@ test('SUPER_ADMIN 也可以访问系统概览 API（应 200）', async ({ baseUR
   await ctx.dispose();
 });
 
+test('SUPER_ADMIN 也可以访问管理员客户列表（应 200）', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.superadmin);
+  expect(session?.user?.role).toBe('SUPER_ADMIN');
+
+  const adminCustomersRes = await ctx.get('/api/admin/customers?page=1&pageSize=3');
+  expect(adminCustomersRes.status()).toBe(200);
+  const body = await adminCustomersRes.json();
+  expect(Array.isArray(body?.data)).toBe(true);
+  expect(body?.pagination?.page).toBe(1);
+  await ctx.dispose();
+});
+
 test('PARTNER 可访问申诉列表但不能访问管理员能力接口', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.partner);
