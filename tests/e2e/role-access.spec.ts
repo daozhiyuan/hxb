@@ -51,7 +51,7 @@ test('ADMIN 可以访问管理员客户列表（应 200）', async ({ baseURL })
   await ctx.dispose();
 });
 
-test('ADMIN 可以访问管理员客户详情（应 200）', async ({ baseURL }) => {
+test('ADMIN 可以访问管理员客户详情，但不应看到超级管理员敏感字段', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.admin);
   expect(session?.user?.role).toBe('ADMIN');
@@ -61,6 +61,9 @@ test('ADMIN 可以访问管理员客户详情（应 200）', async ({ baseURL })
   const body = await adminCustomerRes.json();
   expect(body?.id).toBe(1);
   expect(typeof body?.name).toBe('string');
+  expect(body?.idNumber).toBeUndefined();
+  expect(body?.decryptedIdCardNumber).toBe('');
+  expect(body?.partner?.email).toBe('partner@example.com');
   await ctx.dispose();
 });
 
@@ -89,7 +92,7 @@ test('SUPER_ADMIN 也可以访问管理员客户列表（应 200）', async ({ b
   await ctx.dispose();
 });
 
-test('SUPER_ADMIN 也可以访问管理员客户详情（应 200）', async ({ baseURL }) => {
+test('SUPER_ADMIN 也可以访问管理员客户详情，并看到敏感字段', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.superadmin);
   expect(session?.user?.role).toBe('SUPER_ADMIN');
@@ -99,6 +102,11 @@ test('SUPER_ADMIN 也可以访问管理员客户详情（应 200）', async ({ b
   const body = await adminCustomerRes.json();
   expect(body?.id).toBe(1);
   expect(typeof body?.name).toBe('string');
+  expect(typeof body?.idNumber).toBe('string');
+  expect(body?.idNumber.length).toBeGreaterThan(0);
+  expect(typeof body?.decryptedIdCardNumber).toBe('string');
+  expect(body?.decryptedIdCardNumber.length).toBeGreaterThan(0);
+  expect(body?.partner?.email).toBe('partner@example.com');
   await ctx.dispose();
 });
 
