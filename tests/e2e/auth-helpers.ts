@@ -5,6 +5,28 @@ type RoleCred = {
   password: string;
 };
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function getCsrfWithRetry(request: APIRequestContext, attempts = 3) {
+  let lastStatus: number | undefined;
+
+  for (let i = 0; i < attempts; i += 1) {
+    const res = await request.get('/api/auth/csrf');
+    if (res.ok()) {
+      return res;
+    }
+
+    lastStatus = res.status();
+    if (lastStatus !== 429 || i === attempts - 1) {
+      return res;
+    }
+
+    await sleep(300 * (i + 1));
+  }
+
+  throw new Error('unreachable');
+}
+
 export const roles: Record<'admin' | 'superadmin' | 'partner' | 'user', RoleCred> = {
   admin: {
     email: process.env.E2E_ADMIN_EMAIL || 'admin@example.com',
@@ -25,7 +47,7 @@ export const roles: Record<'admin' | 'superadmin' | 'partner' | 'user', RoleCred
 };
 
 export async function loginByCredentials(request: APIRequestContext, cred: RoleCred) {
-  const csrfRes = await request.get('/api/auth/csrf');
+  const csrfRes = await getCsrfWithRetry(request);
   expect(csrfRes.ok()).toBeTruthy();
   const { csrfToken } = await csrfRes.json();
 
