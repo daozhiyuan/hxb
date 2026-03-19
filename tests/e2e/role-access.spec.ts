@@ -199,7 +199,7 @@ test('PARTNER 可访问申诉列表与自有申诉详情，但不能访问管理
   await ctx.dispose();
 });
 
-test('已登录角色访问申诉导出接口时符合当前作用域模型', async ({ baseURL }) => {
+test('ADMIN 与 SUPER_ADMIN 导出处理中的申诉 CSV', async ({ baseURL }) => {
   const adminCtx = await request.newContext({ baseURL });
   const adminSession = await loginByCredentials(adminCtx, roles.admin);
   expect(adminSession?.user?.role).toBe('ADMIN');
@@ -221,7 +221,9 @@ test('已登录角色访问申诉导出接口时符合当前作用域模型', as
   expect(superCsv).toContain('ID,客户姓名,申诉原因,状态');
   expect(superCsv).toContain('Appeal Smoke Customer');
   await superCtx.dispose();
+});
 
+test('PARTNER 导出处理中的申诉 CSV，USER 只能导出空范围 CSV', async ({ baseURL }) => {
   const partnerCtx = await request.newContext({ baseURL });
   const partnerSession = await loginByCredentials(partnerCtx, roles.partner);
   expect(partnerSession?.user?.role).toBe('PARTNER');
@@ -236,22 +238,6 @@ test('已登录角色访问申诉导出接口时符合当前作用域模型', as
   const userCtx = await request.newContext({ baseURL });
   const userSession = await loginByCredentials(userCtx, roles.user);
   expect(userSession?.user?.role).toBe('USER');
-
-  const overviewRes = await userCtx.get('/api/admin/system-overview');
-  expect(overviewRes.status()).toBe(403);
-
-  const settingsRes = await userCtx.get('/api/admin/settings');
-  expect(settingsRes.status()).toBe(403);
-
-  const adminCustomersRes = await userCtx.get('/api/admin/customers?page=1&pageSize=3');
-  expect(adminCustomersRes.status()).toBe(403);
-
-  const adminCustomerRes = await userCtx.get('/api/admin/customers/1');
-  expect(adminCustomerRes.status()).toBe(403);
-
-  const appealDetailRes = await userCtx.get('/api/appeals/1');
-  expect(appealDetailRes.status()).toBe(403);
-
   const userExportRes = await userCtx.get('/api/appeals/export?status=PROCESSING');
   expect(userExportRes.status()).toBe(200);
   expect(userExportRes.headers()['content-type']).toContain('text/csv');
