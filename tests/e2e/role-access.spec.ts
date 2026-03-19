@@ -63,6 +63,9 @@ test('PARTNER 可访问申诉列表但不能访问管理员能力接口', async 
 
   const overviewRes = await ctx.get('/api/admin/system-overview');
   expect(overviewRes.status()).toBe(403);
+
+  const settingsRes = await ctx.get('/api/admin/settings');
+  expect(settingsRes.status()).toBe(403);
   await ctx.dispose();
 });
 
