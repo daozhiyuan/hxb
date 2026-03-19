@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { Role, AppealStatus, Prisma } from '@prisma/client';
 import { format } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { isAdmin } from '@/lib/auth-helpers';
 
 // 导入API配置
 export const dynamic = 'force-dynamic';
@@ -30,8 +31,9 @@ export async function GET(request: Request) {
     const where: any = {};
     
     // 根据用户角色添加查询条件
-    if (session.user.role !== Role.ADMIN) {
-      where.partnerId = session.user.id;
+    // ADMIN 和 SUPER_ADMIN 都应具备管理员导出视角；其他角色仅能导出自己的申诉。
+    if (!isAdmin(session)) {
+      where.partnerId = Number(session.user.id);
     }
     
     // 添加状态过滤

@@ -75,7 +75,30 @@ export async function GET(
       return notFoundResponse('申诉', parseInt(params.id, 10));
     }
 
-    return successResponse(appeal);
+    const isPrivilegedAdmin = isAdmin(session) || isSuperAdmin(session);
+    const isOwner = Number(appeal.partnerId) === Number(session.user.id);
+
+    if (!isPrivilegedAdmin && !isOwner) {
+      return forbiddenResponse('没有权限查看此申诉');
+    }
+
+    const responseData: Record<string, any> = { ...appeal };
+
+    if (isSuperAdmin(session) && appeal.idNumber) {
+      try {
+        responseData.idNumber = decryptIdCard(appeal.idNumber);
+      } catch (error) {
+        console.error(`解密申诉证件号码失败 (申诉ID: ${appeal.id}):`, error);
+        responseData.decryptionError = error instanceof Error ? error.message : '解密失败';
+        responseData.idNumber = appeal.idNumber;
+      }
+    } else {
+      delete responseData.idNumber;
+      delete responseData.idNumberHash;
+      delete responseData.decryptionError;
+    }
+
+    return successResponse(responseData);
   } catch (error) {
     console.error('获取申诉详情失败:', error);
     return serverErrorResponse(error);
@@ -148,7 +171,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return updated;
     });
 
-    return successResponse(updatedAppeal);
+    return successResponse({
+      id: updatedAppeal.id,
+      customerName: updatedAppeal.customerName,
+      status: updatedAppeal.status,
+      remarks: updatedAppeal.remarks,
+      operatorId: updatedAppeal.operatorId,
+      updatedAt: updatedAppeal.updatedAt,
+    });
   } catch (error) {
     return serverErrorResponse(error);
   }

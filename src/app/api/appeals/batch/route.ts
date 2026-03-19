@@ -95,7 +95,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ 
       success: true, 
       message: `成功更新 ${updatedAppeals.count} 条申诉`, 
-      count: updatedAppeals.count 
+      count: updatedAppeals.count,
+      updatedCount: updatedAppeals.count,
     });
   } catch (error) {
     console.error('批量处理申诉失败:', error);

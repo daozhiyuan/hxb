@@ -283,7 +283,15 @@ export default function AppealDetail({ params }: { params: { id: string } }) {
       if (!response.ok) throw new Error('更新申诉状态失败');
 
       const updatedAppeal = await response.json();
-      setAppeal(updatedAppeal);
+      const updatedAppealData = updatedAppeal?.data || updatedAppeal?.appeal;
+
+      if (updatedAppealData) {
+        setAppeal(prev => prev ? {
+          ...prev,
+          ...updatedAppealData,
+        } : prev);
+      }
+
       setShowUpdateDialog(false);
       setNewStatus('');
       setRemarks('');

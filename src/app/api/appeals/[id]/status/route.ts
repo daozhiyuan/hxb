@@ -94,10 +94,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return updated;
     });
 
+    const sanitizedAppeal = {
+      id: updatedAppeal.id,
+      customerName: updatedAppeal.customerName,
+      status: updatedAppeal.status,
+      remarks: updatedAppeal.remarks,
+      operatorId: updatedAppeal.operatorId,
+      updatedAt: updatedAppeal.updatedAt,
+      createdAt: updatedAppeal.createdAt,
+    };
+
     return NextResponse.json({ 
       success: true, 
       message: '申诉状态已更新',
-      appeal: updatedAppeal
+      data: sanitizedAppeal,
+      appeal: sanitizedAppeal
     });
   } catch (error) {
     console.error('更新申诉状态失败:', error);

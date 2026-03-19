@@ -82,7 +82,7 @@ export async function GET(
       return NextResponse.json({ error: '客户不存在' }, { status: 404 });
     }
 
-    // 如果是超级管理员，解密身份证号码
+    // 仅超级管理员可获取证件相关敏感字段
     let decryptedIdCardNumber = '';
     if (isSuperAdmin(session)) {
       try {
@@ -94,12 +94,20 @@ export async function GET(
         decryptedIdCardNumber = '[解密失败]';
       }
     }
-    // 始终返回加密字段
-    return NextResponse.json({
+
+    const responseData: Record<string, any> = {
       ...customer,
-      idNumber: customer.idNumber || '',
       decryptedIdCardNumber: isSuperAdmin(session) ? decryptedIdCardNumber : '',
-    });
+    };
+
+    if (isSuperAdmin(session)) {
+      responseData.idNumber = customer.idNumber || '';
+    } else {
+      delete responseData.idNumber;
+      delete responseData.idNumberHash;
+    }
+
+    return NextResponse.json(responseData);
   } catch (error) {
     // 增加详细错误日志
     console.error('获取客户详情失败:', error);

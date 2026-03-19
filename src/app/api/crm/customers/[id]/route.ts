@@ -42,16 +42,22 @@ export async function GET(
       return forbiddenResponse('没有权限查看此客户');
     }
 
-    const decryptedData: any = { ...customer, idNumber: (customer as any).idNumber || '' };
+    const responseData: any = { ...customer };
+
     if (isSuperAdmin(session) && (customer as any).idNumber) {
+      responseData.idNumber = (customer as any).idNumber || '';
       try {
-        decryptedData.decryptedIdCardNumber = decryptIdCard((customer as any).idNumber);
+        responseData.decryptedIdCardNumber = decryptIdCard((customer as any).idNumber);
       } catch {
-        decryptedData.decryptedIdCardNumber = '[解密失败]';
+        responseData.decryptedIdCardNumber = '[解密失败]';
       }
+    } else {
+      delete responseData.idNumber;
+      delete responseData.idNumberHash;
+      delete responseData.decryptedIdCardNumber;
     }
 
-    return successResponse(decryptedData);
+    return successResponse(responseData);
   } catch (error) {
     return serverErrorResponse(error);
   }
@@ -133,7 +139,13 @@ export async function PATCH(
       },
     });
 
-    return successResponse(updatedCustomer);
+    const responseData: Record<string, any> = { ...updatedCustomer };
+    if (!isSuperAdmin(session)) {
+      delete responseData.idNumber;
+      delete responseData.idNumberHash;
+    }
+
+    return successResponse(responseData);
   } catch (error) {
     return serverErrorResponse(error);
   }

@@ -71,13 +71,16 @@ export async function GET(request: Request) {
       },
     });
     
-    // 为超级管理员解密证件号码
+    // 仅超级管理员可在管理员列表中获取证件相关敏感字段
     const processedCustomers = await Promise.all(customers.map(async (customer) => {
-      const processedCustomer = { ...customer } as typeof customer & { decryptedIdCardNumber: string };
-      let decryptedIdCardNumber = '';
+      const processedCustomer: Record<string, any> = {
+        ...customer,
+        decryptedIdCardNumber: '',
+      };
+
       if (isSuperAdmin(session) && customer.idNumber) {
         try {
-          decryptedIdCardNumber = decryptIdCard(customer.idNumber);
+          let decryptedIdCardNumber = decryptIdCard(customer.idNumber);
           if (
             decryptedIdCardNumber.includes('解密失败') ||
             decryptedIdCardNumber.includes('格式错误') ||
@@ -85,12 +88,16 @@ export async function GET(request: Request) {
           ) {
             decryptedIdCardNumber = '[解密失败]';
           }
+          processedCustomer.decryptedIdCardNumber = decryptedIdCardNumber;
         } catch (decryptError) {
           console.error('解密过程发生异常:', decryptError);
-          decryptedIdCardNumber = '[解密失败]';
+          processedCustomer.decryptedIdCardNumber = '[解密失败]';
         }
+      } else {
+        delete processedCustomer.idNumber;
+        delete processedCustomer.idNumberHash;
       }
-      processedCustomer.decryptedIdCardNumber = decryptedIdCardNumber;
+
       return processedCustomer;
     }));
     

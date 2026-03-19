@@ -44,13 +44,39 @@ export async function GET(request: Request) {
       where,
       sortBy,
       sortOrder,
+      includeSensitiveIdData: isSuperAdmin(session),
     });
 
-    if (isSuperAdmin(session) && Array.isArray(result.data)) {
-      result.data = result.data.map((customer: any) => ({
-        ...customer,
-        decryptedIdCardNumber: customer.idNumber ? decryptIdCard(customer.idNumber) : '',
-      }));
+    if (Array.isArray(result.data)) {
+      result.data = result.data.map((customer: any) => {
+        const safeCustomer = {
+          id: customer.id,
+          name: customer.name,
+          companyName: customer.companyName ?? null,
+          phone: customer.phone ?? null,
+          email: customer.email ?? null,
+          status: customer.status,
+          notes: customer.notes ?? null,
+          registrationDate: customer.registrationDate ?? customer.createdAt ?? null,
+          updatedAt: customer.updatedAt ?? null,
+          jobTitle: customer.jobTitle ?? null,
+          createdAt: customer.createdAt ?? null,
+          idCardType: customer.idCardType ?? null,
+          industry: customer.industry ?? null,
+          source: customer.source ?? null,
+          address: customer.address ?? null,
+          partnerId: customer.partnerId ?? null,
+          lastContactDate: customer.lastContactDate ?? null,
+        } as Record<string, any>;
+
+        if (isSuperAdmin(session)) {
+          safeCustomer.idNumberHash = customer.idNumberHash ?? null;
+          safeCustomer.idNumber = customer.idNumber ?? '';
+          safeCustomer.decryptedIdCardNumber = customer.idNumber ? decryptIdCard(customer.idNumber) : '';
+        }
+
+        return safeCustomer;
+      });
     }
 
     return successResponse(result);

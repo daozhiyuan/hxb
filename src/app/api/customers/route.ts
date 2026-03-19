@@ -5,6 +5,33 @@ import { customerSchema } from '@/models/customer';
 import { hashIdCard, encryptIdCard } from '@/lib/encryption';
 import prisma from '@/lib/prisma';
 
+function sanitizeCustomerResponse(customer: any, includeSensitiveIdData: boolean) {
+  const response = {
+    id: customer.id,
+    name: customer.name,
+    phone: customer.phone,
+    email: customer.email,
+    status: customer.status,
+    notes: customer.notes,
+    address: customer.address,
+    createdAt: customer.createdAt,
+    updatedAt: customer.updatedAt,
+    jobTitle: customer.jobTitle,
+    industry: customer.industry,
+    source: customer.source,
+    idCardType: customer.idCardType,
+    lastContactDate: customer.lastContactDate,
+    partnerId: customer.partnerId,
+  } as Record<string, any>;
+
+  if (includeSensitiveIdData) {
+    response.idNumber = customer.idNumber;
+    response.idNumberHash = customer.idNumberHash;
+  }
+
+  return response;
+}
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
@@ -28,6 +55,8 @@ export async function GET(request: Request) {
           ],
         };
 
+    const includeSensitiveIdData = session.user.role === 'SUPER_ADMIN';
+
     const [total, customers] = await Promise.all([
       prisma.customer.count({ where }),
       prisma.customer.findMany({
@@ -39,7 +68,7 @@ export async function GET(request: Request) {
     ]);
 
     return NextResponse.json({
-      data: customers,
+      data: customers.map((customer) => sanitizeCustomerResponse(customer, includeSensitiveIdData)),
       pagination: {
         total,
         page,
@@ -93,7 +122,10 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(customer, { status: 201 });
+    return NextResponse.json(
+      sanitizeCustomerResponse(customer, session.user.role === 'SUPER_ADMIN'),
+      { status: 201 }
+    );
   } catch (error: any) {
     console.error('创建客户失败:', error);
     if (error.name === 'ZodError') {
@@ -158,7 +190,9 @@ export async function PATCH(request: Request) {
       data: updateData,
     });
 
-    return NextResponse.json(updatedCustomer);
+    return NextResponse.json(
+      sanitizeCustomerResponse(updatedCustomer, session.user.role === 'SUPER_ADMIN')
+    );
   } catch (error: any) {
     console.error('更新客户失败:', error);
     return NextResponse.json({ error: '更新客户失败' }, { status: 500 });

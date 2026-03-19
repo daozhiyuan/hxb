@@ -127,8 +127,9 @@ export async function GET(request: Request) {
             result.idNumber = appeal.idNumber; // 解密失败时使用原始值
           }
         } else {
-          // 非超级管理员不能看到证件号码
+          // 非超级管理员不能看到证件相关敏感字段
           delete result.idNumber;
+          delete result.idNumberHash;
         }
         
         return result;
@@ -228,7 +229,14 @@ export async function POST(request: Request) {
             },
           });
 
-          return NextResponse.json(appeal);
+          return NextResponse.json({
+            id: appeal.id,
+            customerName: appeal.customerName,
+            status: appeal.status,
+            createdAt: appeal.createdAt,
+            updatedAt: appeal.updatedAt,
+            partnerId: appeal.partnerId,
+          });
         }
 
         return NextResponse.json(
@@ -266,7 +274,14 @@ export async function POST(request: Request) {
         },
       });
 
-      return NextResponse.json(appeal);
+      return NextResponse.json({
+        id: appeal.id,
+        customerName: appeal.customerName,
+        status: appeal.status,
+        createdAt: appeal.createdAt,
+        updatedAt: appeal.updatedAt,
+        partnerId: appeal.partnerId,
+      });
     } catch (error) {
       console.error('创建申诉失败:', error);
       return NextResponse.json(

@@ -36,8 +36,9 @@ export async function getSafeCustomersList(options: {
   where: any;
   sortBy: string;
   sortOrder: 'asc' | 'desc';
+  includeSensitiveIdData?: boolean;
 }) {
-  const { page, pageSize, where, sortBy, sortOrder } = options;
+  const { page, pageSize, where, sortBy, sortOrder, includeSensitiveIdData = false } = options;
 
   // 验证排序字段是否有效，避免使用不存在的字段
   const validSortFields = ['createdAt', 'name', 'updatedAt', 'status', 'companyName', 'email'];
@@ -89,14 +90,26 @@ export async function getSafeCustomersList(options: {
     const customers = await prisma.$queryRawUnsafe<any[]>(dataQuery, ...params, pageSize, skip);
     const customerRows = Array.isArray(customers) ? customers : [];
     
-    // 批量解密证件号
+    // 仅在明确允许的场景下保留/解密敏感证件信息
     const { decryptIdCard } = await import('./encryption');
-    const processedCustomers = customerRows.map((customer: any) => ({
-      ...customer,
-      // 确保registrationDate存在
-      registrationDate: customer.createdAt || null,
-      decryptedIdCardNumber: customer.idNumber ? decryptIdCard(customer.idNumber) : ''
-    }));
+    const processedCustomers = customerRows.map((customer: any) => {
+      const baseCustomer = {
+        ...customer,
+        // 确保registrationDate存在
+        registrationDate: customer.createdAt || null,
+      };
+
+      if (!includeSensitiveIdData) {
+        delete (baseCustomer as any).idNumber;
+        delete (baseCustomer as any).decryptedIdCardNumber;
+        return baseCustomer;
+      }
+
+      return {
+        ...baseCustomer,
+        decryptedIdCardNumber: customer.idNumber ? decryptIdCard(customer.idNumber) : ''
+      };
+    });
 
     return {
       data: processedCustomers,
