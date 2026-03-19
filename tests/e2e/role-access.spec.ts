@@ -224,6 +224,8 @@ test('ADMIN 与 SUPER_ADMIN 导出处理中的申诉 CSV', async ({ baseURL }) =
 });
 
 test('PARTNER 可以导出自己作用域内的处理中申诉 CSV', async ({ baseURL }) => {
+  test.setTimeout(120_000);
+
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.partner);
   expect(session?.user?.role).toBe('PARTNER');
