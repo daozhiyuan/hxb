@@ -69,13 +69,16 @@ test('PARTNER 可访问申诉列表但不能访问管理员能力接口', async 
   await ctx.dispose();
 });
 
-test('USER 不能访问系统概览 API（应 403）', async ({ baseURL }) => {
+test('USER 不能访问管理员设置与系统概览 API（应 403）', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.user);
   expect(session?.user?.role).toBe('USER');
 
   const overviewRes = await ctx.get('/api/admin/system-overview');
   expect(overviewRes.status()).toBe(403);
+
+  const settingsRes = await ctx.get('/api/admin/settings');
+  expect(settingsRes.status()).toBe(403);
   await ctx.dispose();
 });
 
