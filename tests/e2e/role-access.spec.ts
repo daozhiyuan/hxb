@@ -123,6 +123,16 @@ test('ADMIN 与 SUPER_ADMIN 查看申诉详情时字段可见性不同', async (
   expect(adminBody?.data?.idNumber).toBeUndefined();
   expect(adminBody?.data?.idNumberHash).toBeUndefined();
   expect(adminBody?.data?.partner?.email).toBe('partner@example.com');
+
+  const adminAppealsRes = await adminCtx.get('/api/appeals?status=PROCESSING&page=1&pageSize=10');
+  expect(adminAppealsRes.status()).toBe(200);
+  const adminListBody = await adminAppealsRes.json();
+  expect(Array.isArray(adminListBody?.items)).toBe(true);
+  expect(adminListBody?.pagination?.page).toBe(1);
+  expect(adminListBody?.items?.length).toBeGreaterThan(0);
+  expect(adminListBody.items[0]?.idNumber).toBeUndefined();
+  expect(adminListBody.items[0]?.idNumberHash).toBeUndefined();
+  expect(adminListBody.items[0]?.partner?.email).toBe('partner@example.com');
   await adminCtx.dispose();
 
   const superCtx = await request.newContext({ baseURL });
@@ -139,6 +149,18 @@ test('ADMIN 与 SUPER_ADMIN 查看申诉详情时字段可见性不同', async (
   expect(typeof superBody?.data?.idNumberHash).toBe('string');
   expect(superBody?.data?.idNumberHash.length).toBeGreaterThan(0);
   expect(superBody?.data?.partner?.email).toBe('partner@example.com');
+
+  const superAppealsRes = await superCtx.get('/api/appeals?status=PROCESSING&page=1&pageSize=10');
+  expect(superAppealsRes.status()).toBe(200);
+  const superListBody = await superAppealsRes.json();
+  expect(Array.isArray(superListBody?.items)).toBe(true);
+  expect(superListBody?.pagination?.page).toBe(1);
+  expect(superListBody?.items?.length).toBeGreaterThan(0);
+  expect(typeof superListBody.items[0]?.idNumber).toBe('string');
+  expect(superListBody.items[0]?.idNumber.length).toBeGreaterThan(0);
+  expect(typeof superListBody.items[0]?.idNumberHash).toBe('string');
+  expect(superListBody.items[0]?.idNumberHash.length).toBeGreaterThan(0);
+  expect(superListBody.items[0]?.partner?.email).toBe('partner@example.com');
   await superCtx.dispose();
 });
 
@@ -147,8 +169,13 @@ test('PARTNER 可访问申诉列表与自有申诉详情，但不能访问管理
   const session = await loginByCredentials(ctx, roles.partner);
   expect(session?.user?.role).toBe('PARTNER');
 
-  const appealsRes = await ctx.get('/api/appeals?page=1&pageSize=3');
+  const appealsRes = await ctx.get('/api/appeals?status=PROCESSING&page=1&pageSize=10');
   expect(appealsRes.status()).toBe(200);
+  const appealsBody = await appealsRes.json();
+  expect(Array.isArray(appealsBody?.items)).toBe(true);
+  expect(appealsBody?.items?.length).toBeGreaterThan(0);
+  expect(appealsBody.items[0]?.idNumber).toBeUndefined();
+  expect(appealsBody.items[0]?.idNumberHash).toBeUndefined();
 
   const appealDetailRes = await ctx.get('/api/appeals/1');
   expect(appealDetailRes.status()).toBe(200);
