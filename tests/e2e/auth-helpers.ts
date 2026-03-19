@@ -7,8 +7,19 @@ type RoleCred = {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function getCsrfWithRetry(request: APIRequestContext, attempts = 3) {
-  let lastStatus: number | undefined;
+function getRetryDelayMs(retryAfterHeader: string | null, attemptIndex: number) {
+  const retryAfterSeconds = retryAfterHeader ? Number(retryAfterHeader) : NaN;
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1000;
+  }
+
+  const baseDelay = Math.min(500 * 2 ** attemptIndex, 5000);
+  const jitter = Math.floor(Math.random() * 250);
+  return baseDelay + jitter;
+}
+
+async function getCsrfWithRetry(request: APIRequestContext, attempts = 6) {
+  let lastResponse;
 
   for (let i = 0; i < attempts; i += 1) {
     const res = await request.get('/api/auth/csrf');
@@ -16,12 +27,17 @@ async function getCsrfWithRetry(request: APIRequestContext, attempts = 3) {
       return res;
     }
 
-    lastStatus = res.status();
-    if (lastStatus !== 429 || i === attempts - 1) {
+    lastResponse = res;
+    if (res.status() !== 429 || i === attempts - 1) {
       return res;
     }
 
-    await sleep(300 * (i + 1));
+    const retryAfter = res.headers()['retry-after'] ?? null;
+    await sleep(getRetryDelayMs(retryAfter, i));
+  }
+
+  if (lastResponse) {
+    return lastResponse;
   }
 
   throw new Error('unreachable');

@@ -223,26 +223,30 @@ test('ADMIN 与 SUPER_ADMIN 导出处理中的申诉 CSV', async ({ baseURL }) =
   await superCtx.dispose();
 });
 
-test('PARTNER 导出处理中的申诉 CSV，USER 只能导出空范围 CSV', async ({ baseURL }) => {
-  const partnerCtx = await request.newContext({ baseURL });
-  const partnerSession = await loginByCredentials(partnerCtx, roles.partner);
-  expect(partnerSession?.user?.role).toBe('PARTNER');
-  const partnerExportRes = await partnerCtx.get('/api/appeals/export?status=PROCESSING');
-  expect(partnerExportRes.status()).toBe(200);
-  expect(partnerExportRes.headers()['content-type']).toContain('text/csv');
-  const partnerCsv = await partnerExportRes.text();
-  expect(partnerCsv).toContain('ID,客户姓名,申诉原因,状态');
-  expect(partnerCsv).toContain('Appeal Smoke Customer');
-  await partnerCtx.dispose();
+test('PARTNER 可以导出自己作用域内的处理中申诉 CSV', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.partner);
+  expect(session?.user?.role).toBe('PARTNER');
 
-  const userCtx = await request.newContext({ baseURL });
-  const userSession = await loginByCredentials(userCtx, roles.user);
-  expect(userSession?.user?.role).toBe('USER');
-  const userExportRes = await userCtx.get('/api/appeals/export?status=PROCESSING');
-  expect(userExportRes.status()).toBe(200);
-  expect(userExportRes.headers()['content-type']).toContain('text/csv');
-  const userCsv = await userExportRes.text();
-  expect(userCsv).toContain('ID,客户姓名,申诉原因,状态');
-  expect(userCsv).not.toContain('Appeal Smoke Customer');
-  await userCtx.dispose();
+  const exportRes = await ctx.get('/api/appeals/export?status=PROCESSING');
+  expect(exportRes.status()).toBe(200);
+  expect(exportRes.headers()['content-type']).toContain('text/csv');
+  const csv = await exportRes.text();
+  expect(csv).toContain('ID,客户姓名,申诉原因,状态');
+  expect(csv).toContain('Appeal Smoke Customer');
+  await ctx.dispose();
+});
+
+test('USER 只能导出空作用域的申诉 CSV', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.user);
+  expect(session?.user?.role).toBe('USER');
+
+  const exportRes = await ctx.get('/api/appeals/export?status=PROCESSING');
+  expect(exportRes.status()).toBe(200);
+  expect(exportRes.headers()['content-type']).toContain('text/csv');
+  const csv = await exportRes.text();
+  expect(csv).toContain('ID,客户姓名,申诉原因,状态');
+  expect(csv).not.toContain('Appeal Smoke Customer');
+  await ctx.dispose();
 });
