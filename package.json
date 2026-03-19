@@ -11,6 +11,8 @@
     "start": "next start -p 3000 -H 0.0.0.0",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
     "db:seed": "npx prisma db seed",
     "migrate:encryption": "tsx src/scripts/migrate-encryption.ts",
     "generate:keys": "tsx src/scripts/generate-keys.ts",
@@ -81,6 +83,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
     "@types/pg": "^8.11.13",
