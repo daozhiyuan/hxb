@@ -38,6 +38,18 @@ test('ADMIN 可以访问系统概览 API（应 200）', async ({ baseURL }) => {
   await ctx.dispose();
 });
 
+test('SUPER_ADMIN 也可以访问系统概览 API（应 200）', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.superadmin);
+  expect(session?.user?.role).toBe('SUPER_ADMIN');
+
+  const overviewRes = await ctx.get('/api/admin/system-overview');
+  expect(overviewRes.status()).toBe(200);
+  const body = await overviewRes.json();
+  expect(body?.runtime?.status).toBe('OK');
+  await ctx.dispose();
+});
+
 test('PARTNER 可访问申诉列表但不能访问管理员能力接口', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.partner);
