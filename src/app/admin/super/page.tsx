@@ -115,6 +115,11 @@ export default function SuperAdminPage() {
                     管理工具
                   </Button>
                 </Link>
+                <Link href="/admin/system-overview">
+                  <Button variant="outline" className="ml-2">
+                    系统概览
+                  </Button>
+                </Link>
               </div>
               <Button onClick={fetchCustomers} variant="outline">刷新数据</Button>
             </div>

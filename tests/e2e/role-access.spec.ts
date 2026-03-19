@@ -26,6 +26,18 @@ test('SUPER_ADMIN 可以访问 /api/admin/settings（应 200）', async ({ baseU
   await ctx.dispose();
 });
 
+test('ADMIN 可以访问系统概览 API（应 200）', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.admin);
+  expect(session?.user?.role).toBe('ADMIN');
+
+  const overviewRes = await ctx.get('/api/admin/system-overview');
+  expect(overviewRes.status()).toBe(200);
+  const body = await overviewRes.json();
+  expect(body?.runtime?.status).toBe('OK');
+  await ctx.dispose();
+});
+
 test('USER 不能访问管理员客户详情（应 403）', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.user);
