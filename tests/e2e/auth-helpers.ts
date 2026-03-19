@@ -5,7 +5,7 @@ type RoleCred = {
   password: string;
 };
 
-export const roles: Record<'admin' | 'superadmin' | 'user', RoleCred> = {
+export const roles: Record<'admin' | 'superadmin' | 'partner' | 'user', RoleCred> = {
   admin: {
     email: process.env.E2E_ADMIN_EMAIL || 'admin@example.com',
     password: process.env.E2E_ADMIN_PASSWORD || 'admin123',
@@ -13,6 +13,10 @@ export const roles: Record<'admin' | 'superadmin' | 'user', RoleCred> = {
   superadmin: {
     email: process.env.E2E_SUPERADMIN_EMAIL || 'superadmin@example.com',
     password: process.env.E2E_SUPERADMIN_PASSWORD || 'superadmin123',
+  },
+  partner: {
+    email: process.env.E2E_PARTNER_EMAIL || 'partner@example.com',
+    password: process.env.E2E_PARTNER_PASSWORD || 'partner123',
   },
   user: {
     email: process.env.E2E_USER_EMAIL || 'user@example.com',

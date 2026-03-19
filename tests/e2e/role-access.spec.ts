@@ -38,6 +38,19 @@ test('ADMIN 可以访问系统概览 API（应 200）', async ({ baseURL }) => {
   await ctx.dispose();
 });
 
+test('PARTNER 可访问申诉列表但不能访问管理员客户详情', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.partner);
+  expect(session?.user?.role).toBe('PARTNER');
+
+  const appealsRes = await ctx.get('/api/appeals?page=1&pageSize=3');
+  expect(appealsRes.status()).toBe(200);
+
+  const adminCustomerRes = await ctx.get('/api/admin/customers/1');
+  expect(adminCustomerRes.status()).toBe(403);
+  await ctx.dispose();
+});
+
 test('USER 不能访问管理员客户详情（应 403）', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.user);
