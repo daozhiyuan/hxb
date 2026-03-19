@@ -51,6 +51,19 @@ test('ADMIN 可以访问管理员客户列表（应 200）', async ({ baseURL })
   await ctx.dispose();
 });
 
+test('ADMIN 可以访问管理员客户详情（应 200）', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.admin);
+  expect(session?.user?.role).toBe('ADMIN');
+
+  const adminCustomerRes = await ctx.get('/api/admin/customers/1');
+  expect(adminCustomerRes.status()).toBe(200);
+  const body = await adminCustomerRes.json();
+  expect(body?.id).toBe(1);
+  expect(typeof body?.name).toBe('string');
+  await ctx.dispose();
+});
+
 test('SUPER_ADMIN 也可以访问系统概览 API（应 200）', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.superadmin);
@@ -73,6 +86,19 @@ test('SUPER_ADMIN 也可以访问管理员客户列表（应 200）', async ({ b
   const body = await adminCustomersRes.json();
   expect(Array.isArray(body?.data)).toBe(true);
   expect(body?.pagination?.page).toBe(1);
+  await ctx.dispose();
+});
+
+test('SUPER_ADMIN 也可以访问管理员客户详情（应 200）', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.superadmin);
+  expect(session?.user?.role).toBe('SUPER_ADMIN');
+
+  const adminCustomerRes = await ctx.get('/api/admin/customers/1');
+  expect(adminCustomerRes.status()).toBe(200);
+  const body = await adminCustomerRes.json();
+  expect(body?.id).toBe(1);
+  expect(typeof body?.name).toBe('string');
   await ctx.dispose();
 });
 
