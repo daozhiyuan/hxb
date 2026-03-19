@@ -199,24 +199,64 @@ test('PARTNER 可访问申诉列表与自有申诉详情，但不能访问管理
   await ctx.dispose();
 });
 
-test('USER 不能访问管理员能力，也不能查看申诉详情（应 403）', async ({ baseURL }) => {
-  const ctx = await request.newContext({ baseURL });
-  const session = await loginByCredentials(ctx, roles.user);
-  expect(session?.user?.role).toBe('USER');
+test('已登录角色访问申诉导出接口时符合当前作用域模型', async ({ baseURL }) => {
+  const adminCtx = await request.newContext({ baseURL });
+  const adminSession = await loginByCredentials(adminCtx, roles.admin);
+  expect(adminSession?.user?.role).toBe('ADMIN');
+  const adminExportRes = await adminCtx.get('/api/appeals/export?status=PROCESSING');
+  expect(adminExportRes.status()).toBe(200);
+  expect(adminExportRes.headers()['content-type']).toContain('text/csv');
+  const adminCsv = await adminExportRes.text();
+  expect(adminCsv).toContain('ID,客户姓名,申诉原因,状态');
+  expect(adminCsv).toContain('Appeal Smoke Customer');
+  await adminCtx.dispose();
 
-  const overviewRes = await ctx.get('/api/admin/system-overview');
+  const superCtx = await request.newContext({ baseURL });
+  const superSession = await loginByCredentials(superCtx, roles.superadmin);
+  expect(superSession?.user?.role).toBe('SUPER_ADMIN');
+  const superExportRes = await superCtx.get('/api/appeals/export?status=PROCESSING');
+  expect(superExportRes.status()).toBe(200);
+  expect(superExportRes.headers()['content-type']).toContain('text/csv');
+  const superCsv = await superExportRes.text();
+  expect(superCsv).toContain('ID,客户姓名,申诉原因,状态');
+  expect(superCsv).toContain('Appeal Smoke Customer');
+  await superCtx.dispose();
+
+  const partnerCtx = await request.newContext({ baseURL });
+  const partnerSession = await loginByCredentials(partnerCtx, roles.partner);
+  expect(partnerSession?.user?.role).toBe('PARTNER');
+  const partnerExportRes = await partnerCtx.get('/api/appeals/export?status=PROCESSING');
+  expect(partnerExportRes.status()).toBe(200);
+  expect(partnerExportRes.headers()['content-type']).toContain('text/csv');
+  const partnerCsv = await partnerExportRes.text();
+  expect(partnerCsv).toContain('ID,客户姓名,申诉原因,状态');
+  expect(partnerCsv).toContain('Appeal Smoke Customer');
+  await partnerCtx.dispose();
+
+  const userCtx = await request.newContext({ baseURL });
+  const userSession = await loginByCredentials(userCtx, roles.user);
+  expect(userSession?.user?.role).toBe('USER');
+
+  const overviewRes = await userCtx.get('/api/admin/system-overview');
   expect(overviewRes.status()).toBe(403);
 
-  const settingsRes = await ctx.get('/api/admin/settings');
+  const settingsRes = await userCtx.get('/api/admin/settings');
   expect(settingsRes.status()).toBe(403);
 
-  const adminCustomersRes = await ctx.get('/api/admin/customers?page=1&pageSize=3');
+  const adminCustomersRes = await userCtx.get('/api/admin/customers?page=1&pageSize=3');
   expect(adminCustomersRes.status()).toBe(403);
 
-  const adminCustomerRes = await ctx.get('/api/admin/customers/1');
+  const adminCustomerRes = await userCtx.get('/api/admin/customers/1');
   expect(adminCustomerRes.status()).toBe(403);
 
-  const appealDetailRes = await ctx.get('/api/appeals/1');
+  const appealDetailRes = await userCtx.get('/api/appeals/1');
   expect(appealDetailRes.status()).toBe(403);
-  await ctx.dispose();
+
+  const userExportRes = await userCtx.get('/api/appeals/export?status=PROCESSING');
+  expect(userExportRes.status()).toBe(200);
+  expect(userExportRes.headers()['content-type']).toContain('text/csv');
+  const userCsv = await userExportRes.text();
+  expect(userCsv).toContain('ID,客户姓名,申诉原因,状态');
+  expect(userCsv).not.toContain('Appeal Smoke Customer');
+  await userCtx.dispose();
 });
