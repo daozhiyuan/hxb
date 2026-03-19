@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
+    "audit:site": "bash scripts/site-audit.sh",
     "db:seed": "npx prisma db seed",
     "migrate:encryption": "tsx src/scripts/migrate-encryption.ts",
     "generate:keys": "tsx src/scripts/generate-keys.ts",
