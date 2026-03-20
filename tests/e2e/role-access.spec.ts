@@ -113,6 +113,18 @@ test('SUPER_ADMIN 也可以访问系统概览 API（应 200）', async ({ baseUR
   await ctx.dispose();
 });
 
+test('SUPER_ADMIN 也可以访问质量概览 API（应 200）', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.superadmin);
+  expect(session?.user?.role).toBe('SUPER_ADMIN');
+
+  const res = await ctx.get('/api/admin/quality-overview');
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(body?.status).toBe('OK');
+  await ctx.dispose();
+});
+
 test('SUPER_ADMIN 也可以访问管理员客户列表（应 200）', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.superadmin);
@@ -241,6 +253,9 @@ test('PARTNER 可访问申诉列表与自有申诉详情，但不能访问管理
   const overviewRes = await ctx.get('/api/admin/system-overview');
   expect(overviewRes.status()).toBe(403);
 
+  const qualityRes = await ctx.get('/api/admin/quality-overview');
+  expect(qualityRes.status()).toBe(403);
+
   const settingsRes = await ctx.get('/api/admin/settings');
   expect(settingsRes.status()).toBe(403);
   await ctx.dispose();
@@ -286,10 +301,28 @@ test('PARTNER 可以导出自己作用域内的处理中申诉 CSV', async ({ ba
   await ctx.dispose();
 });
 
-test('USER 只能导出空作用域的申诉 CSV', async ({ baseURL }) => {
+test('USER 不能访问管理员能力，但可以导出空作用域的申诉 CSV', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.user);
   expect(session?.user?.role).toBe('USER');
+
+  const overviewRes = await ctx.get('/api/admin/system-overview');
+  expect(overviewRes.status()).toBe(403);
+
+  const qualityRes = await ctx.get('/api/admin/quality-overview');
+  expect(qualityRes.status()).toBe(403);
+
+  const settingsRes = await ctx.get('/api/admin/settings');
+  expect(settingsRes.status()).toBe(403);
+
+  const adminCustomersRes = await ctx.get('/api/admin/customers?page=1&pageSize=3');
+  expect(adminCustomersRes.status()).toBe(403);
+
+  const adminCustomerRes = await ctx.get('/api/admin/customers/1');
+  expect(adminCustomerRes.status()).toBe(403);
+
+  const appealDetailRes = await ctx.get('/api/appeals/1');
+  expect(appealDetailRes.status()).toBe(403);
 
   const exportRes = await ctx.get('/api/appeals/export?status=PROCESSING');
   expect(exportRes.status()).toBe(200);
