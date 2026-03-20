@@ -56,6 +56,13 @@ test('ADMIN 可以访问系统概览 API（应 200）', async ({ baseURL }) => {
   expect(overviewRes.status()).toBe(200);
   const body = await overviewRes.json();
   expect(body?.runtime?.status).toBe('OK');
+  expect(typeof body?.runtime?.timestamp).toBe('string');
+  expect(typeof body?.runtime?.nodeEnv).toBe('string');
+  expect(typeof body?.runtime?.uptimeSeconds).toBe('number');
+  expect(typeof body?.counts?.users).toBe('number');
+  expect(typeof body?.counts?.customers).toBe('number');
+  expect(typeof body?.counts?.appeals).toBe('number');
+  expect(typeof body?.counts?.pendingAppeals).toBe('number');
   await ctx.dispose();
 });
 
@@ -68,6 +75,9 @@ test('ADMIN 可以访问质量概览 API（应 200）', async ({ baseURL }) => {
   expect(res.status()).toBe(200);
   const body = await res.json();
   expect(body?.status).toBe('OK');
+  expect(typeof body?.generatedAt).toBe('string');
+  expect(typeof body?.siteAuditCount).toBe('number');
+  expect(Array.isArray(body?.suggestedCommands)).toBe(true);
   await ctx.dispose();
 });
 
@@ -81,6 +91,12 @@ test('ADMIN 可以访问管理员客户列表（应 200）', async ({ baseURL })
   const body = await adminCustomersRes.json();
   expect(Array.isArray(body?.data)).toBe(true);
   expect(body?.pagination?.page).toBe(1);
+  expect(body?.data?.length).toBeGreaterThan(0);
+  expect(body.data[0]?.partner?.email).toBe('partner@example.com');
+  expect(body.data[0]?.partner?.passwordHash).toBeUndefined();
+  expect(body.data[0]?.idNumber).toBeUndefined();
+  expect(body.data[0]?.idNumberHash).toBeUndefined();
+  expect(body.data[0]?.decryptedIdCardNumber).toBe('');
   await ctx.dispose();
 });
 
@@ -110,6 +126,13 @@ test('SUPER_ADMIN 也可以访问系统概览 API（应 200）', async ({ baseUR
   expect(overviewRes.status()).toBe(200);
   const body = await overviewRes.json();
   expect(body?.runtime?.status).toBe('OK');
+  expect(typeof body?.runtime?.timestamp).toBe('string');
+  expect(typeof body?.runtime?.nodeEnv).toBe('string');
+  expect(typeof body?.runtime?.uptimeSeconds).toBe('number');
+  expect(typeof body?.counts?.users).toBe('number');
+  expect(typeof body?.counts?.customers).toBe('number');
+  expect(typeof body?.counts?.appeals).toBe('number');
+  expect(typeof body?.counts?.pendingAppeals).toBe('number');
   await ctx.dispose();
 });
 
@@ -122,6 +145,9 @@ test('SUPER_ADMIN 也可以访问质量概览 API（应 200）', async ({ baseUR
   expect(res.status()).toBe(200);
   const body = await res.json();
   expect(body?.status).toBe('OK');
+  expect(typeof body?.generatedAt).toBe('string');
+  expect(typeof body?.siteAuditCount).toBe('number');
+  expect(Array.isArray(body?.suggestedCommands)).toBe(true);
   await ctx.dispose();
 });
 
@@ -135,6 +161,15 @@ test('SUPER_ADMIN 也可以访问管理员客户列表（应 200）', async ({ b
   const body = await adminCustomersRes.json();
   expect(Array.isArray(body?.data)).toBe(true);
   expect(body?.pagination?.page).toBe(1);
+  expect(body?.data?.length).toBeGreaterThan(0);
+  expect(body.data[0]?.partner?.email).toBe('partner@example.com');
+  expect(body.data[0]?.partner?.passwordHash).toBeUndefined();
+  expect(typeof body.data[0]?.idNumber).toBe('string');
+  expect(body.data[0]?.idNumber.length).toBeGreaterThan(0);
+  expect(typeof body.data[0]?.idNumberHash).toBe('string');
+  expect(body.data[0]?.idNumberHash.length).toBeGreaterThan(0);
+  expect(typeof body.data[0]?.decryptedIdCardNumber).toBe('string');
+  expect(body.data[0]?.decryptedIdCardNumber.length).toBeGreaterThan(0);
   await ctx.dispose();
 });
 
