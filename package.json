@@ -17,6 +17,7 @@
     "e2e:auth:public": "E2E_BASE_URL=https://bb.keti.eu.org playwright test tests/e2e/role-access.spec.ts",
     "e2e:headed": "playwright test --headed",
     "audit:site": "bash scripts/site-audit.sh",
+    "verify:public": "bash scripts/verify-public.sh",
     "db:seed": "npx prisma db seed",
     "migrate:encryption": "tsx src/scripts/migrate-encryption.ts",
     "generate:keys": "tsx src/scripts/generate-keys.ts",

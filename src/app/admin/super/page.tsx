@@ -120,6 +120,11 @@ export default function SuperAdminPage() {
                     系统概览
                   </Button>
                 </Link>
+                <Link href="/admin/quality">
+                  <Button variant="outline" className="ml-2">
+                    质量概览
+                  </Button>
+                </Link>
               </div>
               <Button onClick={fetchCustomers} variant="outline">刷新数据</Button>
             </div>

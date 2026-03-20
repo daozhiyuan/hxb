@@ -38,6 +38,18 @@ test('ADMIN 可以访问系统概览 API（应 200）', async ({ baseURL }) => {
   await ctx.dispose();
 });
 
+test('ADMIN 可以访问质量概览 API（应 200）', async ({ baseURL }) => {
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.admin);
+  expect(session?.user?.role).toBe('ADMIN');
+
+  const res = await ctx.get('/api/admin/quality-overview');
+  expect(res.status()).toBe(200);
+  const body = await res.json();
+  expect(body?.status).toBe('OK');
+  await ctx.dispose();
+});
+
 test('ADMIN 可以访问管理员客户列表（应 200）', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.admin);
