@@ -385,3 +385,63 @@ test('USER 不能访问管理员能力，但可以导出空作用域的申诉 CS
   expect(csv).not.toContain('Appeal Smoke Customer');
   await ctx.dispose();
 });
+
+test('ADMIN 可以创建项目、创建任务并更新状态', async ({ baseURL }) => {
+  test.setTimeout(120_000);
+
+  const ctx = await request.newContext({ baseURL });
+  const session = await loginByCredentials(ctx, roles.admin);
+  expect(session?.user?.role).toBe('ADMIN');
+
+  const projectName = `E2E项目-${Date.now()}`;
+  const createProjectRes = await ctx.post('/api/admin/projects', {
+    data: { name: projectName, description: '项目管理最小可用版回归', priority: 'MEDIUM' },
+  });
+  expect(createProjectRes.status()).toBe(201);
+  const projectBody = await createProjectRes.json();
+  const projectId = projectBody?.data?.id;
+  expect(typeof projectId).toBe('number');
+
+  const createTaskRes = await ctx.post(`/api/admin/projects/${projectId}/tasks`, {
+    data: { title: '补齐最小任务流', priority: 'HIGH' },
+  });
+  expect(createTaskRes.status()).toBe(201);
+  const taskBody = await createTaskRes.json();
+  const taskId = taskBody?.data?.id;
+  expect(typeof taskId).toBe('number');
+
+  const patchTaskRes = await ctx.patch(`/api/admin/tasks/${taskId}`, {
+    data: { status: 'IN_PROGRESS' },
+  });
+  expect(patchTaskRes.status()).toBe(200);
+  const patchedTaskBody = await patchTaskRes.json();
+  expect(patchedTaskBody?.data?.status).toBe('IN_PROGRESS');
+
+  const listProjectsRes = await ctx.get('/api/admin/projects');
+  expect(listProjectsRes.status()).toBe(200);
+  const listProjectsBody = await listProjectsRes.json();
+  const created = listProjectsBody?.data?.find((item: any) => item.id === projectId);
+  expect(created?.name).toBe(projectName);
+  expect(Array.isArray(created?.tasks)).toBe(true);
+  expect(created?.tasks?.some((task: any) => task.id === taskId && task.status === 'IN_PROGRESS')).toBe(true);
+  await ctx.dispose();
+});
+
+test('ADMIN 可以获取智能助手建议，PARTNER 无权访问', async ({ baseURL }) => {
+  const adminCtx = await request.newContext({ baseURL });
+  const adminSession = await loginByCredentials(adminCtx, roles.admin);
+  expect(adminSession?.user?.role).toBe('ADMIN');
+  const adminRes = await adminCtx.get('/api/admin/assistant-suggestions');
+  expect(adminRes.status()).toBe(200);
+  const adminBody = await adminRes.json();
+  expect(Array.isArray(adminBody?.data?.suggestions)).toBe(true);
+  expect(adminBody?.data?.suggestions?.length).toBeGreaterThan(0);
+  await adminCtx.dispose();
+
+  const partnerCtx = await request.newContext({ baseURL });
+  const partnerSession = await loginByCredentials(partnerCtx, roles.partner);
+  expect(partnerSession?.user?.role).toBe('PARTNER');
+  const partnerRes = await partnerCtx.get('/api/admin/assistant-suggestions');
+  expect(partnerRes.status()).toBe(403);
+  await partnerCtx.dispose();
+});

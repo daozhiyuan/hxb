@@ -125,6 +125,16 @@ export default function SuperAdminPage() {
                     质量概览
                   </Button>
                 </Link>
+                <Link href="/admin/projects">
+                  <Button variant="outline" className="ml-2">
+                    项目管理
+                  </Button>
+                </Link>
+                <Link href="/admin/assistant">
+                  <Button variant="outline" className="ml-2">
+                    智能助手
+                  </Button>
+                </Link>
               </div>
               <Button onClick={fetchCustomers} variant="outline">刷新数据</Button>
             </div>

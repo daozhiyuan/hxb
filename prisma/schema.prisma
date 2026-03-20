@@ -35,6 +35,9 @@ model User {
   processedAppeals      Appeal[]    @relation("OperatorAppeals")
   appealLogs            AppealLog[]
   customers             Customer[]  @relation("PartnerCustomers")
+  createdProjects       Project[]   @relation("ProjectCreator")
+  assignedTasks         ProjectTask[] @relation("TaskAssignee")
+  createdTasks          ProjectTask[] @relation("TaskCreator")
 
   @@index([email])
   @@map("users")
@@ -157,6 +160,48 @@ model CustomerToCustomerTag {
   @@map("_CustomerToCustomerTag")
 }
 
+model Project {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String?      @db.Text
+  status      ProjectStatus @default(ACTIVE)
+  priority    String       @default("MEDIUM")
+  startDate   DateTime?
+  dueDate     DateTime?
+  ownerId     Int
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  owner       User         @relation("ProjectCreator", fields: [ownerId], references: [id])
+  tasks       ProjectTask[]
+
+  @@index([ownerId])
+  @@index([status])
+  @@map("projects")
+}
+
+model ProjectTask {
+  id          Int             @id @default(autoincrement())
+  projectId   Int
+  title       String
+  description String?         @db.Text
+  status      ProjectTaskStatus @default(TODO)
+  priority    String          @default("MEDIUM")
+  assigneeId  Int?
+  creatorId   Int
+  dueDate     DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee    User?           @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creator     User            @relation("TaskCreator", fields: [creatorId], references: [id])
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@index([creatorId])
+  @@index([status])
+  @@map("project_tasks")
+}
+
 enum Role {
   SUPER_ADMIN
   ADMIN
@@ -169,4 +214,18 @@ enum AppealStatus {
   PROCESSING @map("processing")
   APPROVED   @map("approved")
   REJECTED   @map("rejected")
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  ARCHIVED
+}
+
+enum ProjectTaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
 }
