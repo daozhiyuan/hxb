@@ -110,6 +110,8 @@ test('CRM 客户详情在 ADMIN / SUPER_ADMIN / PARTNER 间保持敏感字段可
   expect(typeof superBody?.data?.name).toBe('string');
   expect(typeof superBody?.data?.idNumber).toBe('string');
   expect(superBody?.data?.idNumber.length).toBeGreaterThan(0);
+  expect(typeof superBody?.data?.idNumberHash).toBe('string');
+  expect(superBody?.data?.idNumberHash.length).toBeGreaterThan(0);
   expect(typeof superBody?.data?.decryptedIdCardNumber).toBe('string');
   expect(superBody?.data?.decryptedIdCardNumber.length).toBeGreaterThan(0);
   await superCtx.dispose();
