@@ -31,12 +31,12 @@ interface CustomerDetail {
     registrationDate: string;
     createdAt: string;
     updatedAt: string;
-    registeredByPartnerId: number;
-    registeredBy: {
+    partnerId: number | null;
+    partner: {
         id: number;
         name: string | null;
         email: string;
-    };
+    } | null;
     jobTitle: string | null;
 }
 
@@ -146,7 +146,7 @@ export function AdminCustomerDetailDialog({ customerId, isOpen, onOpenChange }: 
                 </div>
                  <hr className="my-2" />
                  <div className="grid grid-cols-[100px_1fr] items-center gap-2">
-                    <span className="font-medium text-muted-foreground">报备人:</span> <span>{customerDetail.registeredBy.name || customerDetail.registeredBy.email} (ID: {customerDetail.registeredBy.id})</span>
+                    <span className="font-medium text-muted-foreground">报备人:</span> <span>{customerDetail.partner ? `${customerDetail.partner.name || customerDetail.partner.email} (ID: ${customerDetail.partner.id})` : '-'}</span>
                 </div>
                 <div className="grid grid-cols-[100px_1fr] items-center gap-2">
                     <span className="font-medium text-muted-foreground">报备日期:</span> <span>{format(new Date(customerDetail.registrationDate), 'yyyy-MM-dd HH:mm:ss')}</span>

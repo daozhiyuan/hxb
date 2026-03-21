@@ -43,7 +43,7 @@ interface Customer {
   updatedAt: string;
 }
 
-interface AdminCustomer { id: number; name: string; companyName: string | null; lastYearRevenue: number | null; phone: string | null; address: string | null; status: string; notes: string | null; registrationDate: string; updatedAt: string; registeredBy: { id: number; name: string | null; email: string; }; jobTitle: string | null; decryptedIdCardNumber?: string; }
+interface AdminCustomer { id: number; name: string; companyName: string | null; lastYearRevenue: number | null; phone: string | null; address: string | null; status: string; notes: string | null; registrationDate: string; updatedAt: string; partner: { id: number; name: string | null; email: string; } | null; jobTitle: string | null; decryptedIdCardNumber?: string; }
 interface PaginationInfo { page: number; pageSize: number; totalCount: number; totalPages: number; }
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -285,7 +285,7 @@ export function AdminCustomerList() {
                         {customer.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{customer.registeredBy.name || customer.registeredBy.email}</TableCell>
+                    <TableCell>{customer.partner ? (customer.partner.name || customer.partner.email) : '-'}</TableCell>
                     <TableCell>{format(new Date(customer.registrationDate), 'yyyy-MM-dd HH:mm')}</TableCell>
                     <TableCell className="space-x-1"> 
                         {/* View Details Button */} 
