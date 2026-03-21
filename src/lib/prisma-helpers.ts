@@ -53,10 +53,11 @@ export async function getSafeCustomersList(options: {
     let whereClause = '';
     const params: any[] = [];
     
-    // 添加合作伙伴ID筛选条件
-    if (where.registeredByPartnerId) {
+    // 添加合作伙伴ID筛选条件（优先使用当前 schema 字段名，兼容旧调用键）
+    const scopedPartnerId = where.partnerId ?? where.registeredByPartnerId;
+    if (scopedPartnerId) {
       whereClause = ' WHERE partnerId = ? ';
-      params.push(where.registeredByPartnerId);
+      params.push(scopedPartnerId);
     }
     
     if (where.search) {

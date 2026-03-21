@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const where: any = {};
 
     if (session.user.role === 'PARTNER') {
-      where.registeredByPartnerId = Number(session.user.id);
+      where.partnerId = Number(session.user.id);
     }
 
     if (searchQuery) {
