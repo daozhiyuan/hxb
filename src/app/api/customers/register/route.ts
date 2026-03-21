@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       industry: validatedData.industry,
       source: validatedData.source,
       idCardType: validatedData.idCardType,
-      registeredByPartnerId: session.user.id
+      partnerId: Number(session.user.id)
     });
 
     if (!success) {

@@ -523,7 +523,8 @@ export async function safeCreateCustomer(data: {
   name: string;
   idNumber: string;
   idNumberHash: string;
-  registeredByPartnerId: number;
+  partnerId?: number;
+  registeredByPartnerId?: number;
   idCardType?: string;
   phone?: string | null;
   email?: string | null;
@@ -539,6 +540,11 @@ export async function safeCreateCustomer(data: {
     const status = data.status && Object.values(CustomerStatusEnum).includes(data.status as any) 
       ? data.status 
       : CustomerStatusEnum.FOLLOWING;
+    const scopedPartnerId = data.partnerId ?? data.registeredByPartnerId;
+
+    if (typeof scopedPartnerId !== 'number' || Number.isNaN(scopedPartnerId)) {
+      return { success: false, error: new Error('缺少有效的 partnerId') };
+    }
 
     // 直接使用Prisma创建
     const customer = await prisma.customer.create({
@@ -546,7 +552,7 @@ export async function safeCreateCustomer(data: {
         name: data.name,
         idNumber: data.idNumber,
         idNumberHash: data.idNumberHash,
-        partnerId: data.registeredByPartnerId,
+        partnerId: scopedPartnerId,
         idCardType: data.idCardType || 'CHINA_MAINLAND',
         phone: data.phone || null,
         email: data.email || null,
