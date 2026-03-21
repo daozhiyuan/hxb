@@ -27,6 +27,63 @@ test('匿名访问受保护 API 返回 401', async ({ request }) => {
   expect(res.status()).toBe(401);
 });
 
+test('CRM 客户列表在 ADMIN / SUPER_ADMIN / PARTNER 间保持敏感字段可见性边界', async ({ baseURL }) => {
+  const adminCtx = await request.newContext({ baseURL });
+  await loginByCredentials(adminCtx, roles.admin);
+
+  const adminRes = await adminCtx.get('/api/crm/customers?page=1&pageSize=3');
+  expect(adminRes.status()).toBe(200);
+  const adminBody = await adminRes.json();
+  expect(Array.isArray(adminBody?.data?.data)).toBe(true);
+  expect(adminBody?.data?.pagination?.page).toBe(1);
+  expect(adminBody?.data?.data?.length).toBeGreaterThan(0);
+  expect(typeof adminBody.data.data[0]?.id).toBe('number');
+  expect(typeof adminBody.data.data[0]?.name).toBe('string');
+  expect(typeof adminBody.data.data[0]?.status).toBe('string');
+  expect(typeof adminBody.data.data[0]?.updatedAt).toBe('string');
+  expect(adminBody.data.data[0]?.idNumber).toBeUndefined();
+  expect(adminBody.data.data[0]?.idNumberHash).toBeUndefined();
+  expect(adminBody.data.data[0]?.decryptedIdCardNumber).toBeUndefined();
+  await adminCtx.dispose();
+
+  const superCtx = await request.newContext({ baseURL });
+  await loginByCredentials(superCtx, roles.superadmin);
+
+  const superRes = await superCtx.get('/api/crm/customers?page=1&pageSize=3');
+  expect(superRes.status()).toBe(200);
+  const superBody = await superRes.json();
+  expect(Array.isArray(superBody?.data?.data)).toBe(true);
+  expect(superBody?.data?.pagination?.page).toBe(1);
+  expect(superBody?.data?.data?.length).toBeGreaterThan(0);
+  expect(typeof superBody.data.data[0]?.id).toBe('number');
+  expect(typeof superBody.data.data[0]?.name).toBe('string');
+  expect(typeof superBody.data.data[0]?.status).toBe('string');
+  expect(typeof superBody.data.data[0]?.updatedAt).toBe('string');
+  expect(typeof superBody.data.data[0]?.idNumber).toBe('string');
+  expect(superBody.data.data[0]?.idNumber.length).toBeGreaterThan(0);
+  expect(typeof superBody.data.data[0]?.idNumberHash).toBe('string');
+  expect(superBody.data.data[0]?.idNumberHash.length).toBeGreaterThan(0);
+  expect(typeof superBody.data.data[0]?.decryptedIdCardNumber).toBe('string');
+  expect(superBody.data.data[0]?.decryptedIdCardNumber.length).toBeGreaterThan(0);
+  await superCtx.dispose();
+
+  const partnerCtx = await request.newContext({ baseURL });
+  await loginByCredentials(partnerCtx, roles.partner);
+
+  const partnerRes = await partnerCtx.get('/api/crm/customers?page=1&pageSize=10');
+  expect(partnerRes.status()).toBe(200);
+  const partnerBody = await partnerRes.json();
+  expect(Array.isArray(partnerBody?.data?.data)).toBe(true);
+  expect(partnerBody?.data?.pagination?.page).toBe(1);
+  expect(partnerBody?.data?.data?.length).toBeGreaterThan(0);
+  expect(partnerBody.data.data.every((item: any) => typeof item.partnerId === 'number')).toBe(true);
+  expect(new Set(partnerBody.data.data.map((item: any) => item.partnerId)).size).toBe(1);
+  expect(partnerBody.data.data[0]?.idNumber).toBeUndefined();
+  expect(partnerBody.data.data[0]?.idNumberHash).toBeUndefined();
+  expect(partnerBody.data.data[0]?.decryptedIdCardNumber).toBeUndefined();
+  await partnerCtx.dispose();
+});
+
 test('ADMIN 不能访问 /api/admin/settings（应 403）', async ({ baseURL }) => {
   const ctx = await request.newContext({ baseURL });
   const session = await loginByCredentials(ctx, roles.admin);

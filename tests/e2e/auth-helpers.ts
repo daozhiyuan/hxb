@@ -67,19 +67,32 @@ export async function loginByCredentials(request: APIRequestContext, cred: RoleC
   expect(csrfRes.ok()).toBeTruthy();
   const { csrfToken } = await csrfRes.json();
 
+  const callbackBaseUrl = new URL(csrfRes.url()).origin;
+
   const callbackRes = await request.post('/api/auth/callback/credentials', {
     form: {
       csrfToken,
       email: cred.email,
       password: cred.password,
-      callbackUrl: `${process.env.E2E_BASE_URL || 'http://127.0.0.1:3000'}/dashboard`,
+      callbackUrl: `${callbackBaseUrl}/dashboard`,
       json: 'true',
     },
   });
 
   expect([200, 302]).toContain(callbackRes.status());
 
-  const sessionRes = await request.get('/api/auth/session');
-  expect(sessionRes.ok()).toBeTruthy();
-  return sessionRes.json();
+  let lastSession: any = null;
+  for (let i = 0; i < 6; i += 1) {
+    const sessionRes = await request.get('/api/auth/session');
+    expect(sessionRes.ok()).toBeTruthy();
+    lastSession = await sessionRes.json();
+
+    if (lastSession?.user?.email === cred.email && lastSession?.user?.role) {
+      return lastSession;
+    }
+
+    await sleep(250 * (i + 1));
+  }
+
+  return lastSession;
 }

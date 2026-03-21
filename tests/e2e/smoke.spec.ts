@@ -18,13 +18,14 @@ test('凭证登录后可访问 dashboard', async ({ page, request }) => {
   expect(csrfRes.ok()).toBeTruthy();
   const csrfJson = await csrfRes.json();
   const csrfToken: string = csrfJson.csrfToken;
+  const callbackBaseUrl = new URL(csrfRes.url()).origin;
 
   const loginRes = await request.post('/api/auth/callback/credentials', {
     form: {
       csrfToken,
       email: process.env.E2E_ADMIN_EMAIL || 'admin@example.com',
       password: process.env.E2E_ADMIN_PASSWORD || 'admin123',
-      callbackUrl: `${process.env.E2E_BASE_URL || 'http://127.0.0.1:3000'}/dashboard`,
+      callbackUrl: `${callbackBaseUrl}/dashboard`,
       json: 'true',
     },
   });

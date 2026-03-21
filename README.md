@@ -107,6 +107,25 @@ npm run build
 npm start
 ```
 
+### E2E 测试说明
+
+Playwright 默认会使用 `http://127.0.0.1:3000` 作为 `baseURL`。如果你的目标是验证公开 HTTPS 部署，必须显式传入 `E2E_BASE_URL`，否则测试实际上是在打本地服务。
+
+常用命令：
+
+```bash
+# 本地默认目标（127.0.0.1:3000）
+npm run e2e:auth
+
+# 公开 HTTPS 目标
+npm run e2e:auth:public
+
+# 或显式指定任意目标
+E2E_BASE_URL=https://bb.keti.eu.org npx playwright test tests/e2e/role-access.spec.ts
+```
+
+认证相关的 E2E helper 现在会基于 `/api/auth/csrf` 响应 URL 推导 callback origin，避免在不同目标之间误用 `callbackUrl`。
+
 ## 项目结构
 ```
 ├── src/

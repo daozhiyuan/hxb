@@ -7,6 +7,8 @@ export default defineConfig({
   retries: 1,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   use: {
+    // Default target is local dev. For public-deployment validation, run with:
+    // E2E_BASE_URL=https://bb.keti.eu.org npx playwright test ...
     baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
