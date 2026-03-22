@@ -445,7 +445,7 @@ test('ADMIN 与 SUPER_ADMIN 导出处理中的申诉 CSV', async ({ baseURL }) =
   const adminCsvRes = await fetchCsvWithRetry(adminCtx, '/api/appeals/export?status=PROCESSING');
   expect(adminCsvRes.status).toBe(200);
   expect(adminCsvRes.contentType).toContain('text/csv');
-  expect(adminCsvRes.body).toContain('ID,客户姓名,申诉原因,状态');
+  expect(adminCsvRes.body).toContain('ID,客户姓名,申诉原因,状态,提交时间,提交人,处理人,处理时间,备注');
   expect(adminCsvRes.body).toContain('Appeal Smoke Customer');
   await adminCtx.dispose();
 
@@ -455,7 +455,7 @@ test('ADMIN 与 SUPER_ADMIN 导出处理中的申诉 CSV', async ({ baseURL }) =
   const superCsvRes = await fetchCsvWithRetry(superCtx, '/api/appeals/export?status=PROCESSING');
   expect(superCsvRes.status).toBe(200);
   expect(superCsvRes.contentType).toContain('text/csv');
-  expect(superCsvRes.body).toContain('ID,客户姓名,申诉原因,状态');
+  expect(superCsvRes.body).toContain('ID,客户姓名,申诉原因,状态,提交时间,提交人,处理人,处理时间,备注');
   expect(superCsvRes.body).toContain('Appeal Smoke Customer');
   await superCtx.dispose();
 });
@@ -471,7 +471,7 @@ test('PARTNER 可以导出自己作用域内的处理中申诉 CSV', async ({ ba
   expect(exportRes.status()).toBe(200);
   expect(exportRes.headers()['content-type']).toContain('text/csv');
   const csv = await exportRes.text();
-  expect(csv).toContain('ID,客户姓名,申诉原因,状态');
+  expect(csv).toContain('ID,客户姓名,申诉原因,状态,提交时间,提交人,处理人,处理时间,备注');
   expect(csv).toContain('Appeal Smoke Customer');
   await ctx.dispose();
 });
@@ -503,7 +503,7 @@ test('USER 不能访问管理员能力，但可以导出空作用域的申诉 CS
   expect(exportRes.status()).toBe(200);
   expect(exportRes.headers()['content-type']).toContain('text/csv');
   const csv = await exportRes.text();
-  expect(csv).toContain('ID,客户姓名,申诉原因,状态');
+  expect(csv).toContain('ID,客户姓名,申诉原因,状态,提交时间,提交人,处理人,处理时间,备注');
   expect(csv).not.toContain('Appeal Smoke Customer');
   await ctx.dispose();
 });
