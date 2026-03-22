@@ -536,6 +536,8 @@ test('ADMIN 可以创建项目、创建任务并更新状态', async ({ baseURL 
   const projectBody = await createProjectRes.json();
   const projectId = projectBody?.data?.id;
   expect(typeof projectId).toBe('number');
+  expect(projectBody?.data?.name).toBe(projectName);
+  expect(projectBody?.data?.priority).toBe('MEDIUM');
 
   const createTaskRes = await ctx.post(`/api/admin/projects/${projectId}/tasks`, {
     data: { title: '补齐最小任务流', priority: 'HIGH' },
@@ -544,19 +546,24 @@ test('ADMIN 可以创建项目、创建任务并更新状态', async ({ baseURL 
   const taskBody = await createTaskRes.json();
   const taskId = taskBody?.data?.id;
   expect(typeof taskId).toBe('number');
+  expect(taskBody?.data?.title).toBe('补齐最小任务流');
+  expect(taskBody?.data?.priority).toBe('HIGH');
 
   const patchTaskRes = await ctx.patch(`/api/admin/tasks/${taskId}`, {
     data: { status: 'IN_PROGRESS' },
   });
   expect(patchTaskRes.status()).toBe(200);
   const patchedTaskBody = await patchTaskRes.json();
+  expect(typeof patchedTaskBody?.data?.id).toBe('number');
   expect(patchedTaskBody?.data?.status).toBe('IN_PROGRESS');
 
   const listProjectsRes = await ctx.get('/api/admin/projects');
   expect(listProjectsRes.status()).toBe(200);
   const listProjectsBody = await listProjectsRes.json();
+  expect(Array.isArray(listProjectsBody?.data)).toBe(true);
   const created = listProjectsBody?.data?.find((item: any) => item.id === projectId);
   expect(created?.name).toBe(projectName);
+  expect(created?.priority).toBe('MEDIUM');
   expect(Array.isArray(created?.tasks)).toBe(true);
   expect(created?.tasks?.some((task: any) => task.id === taskId && task.status === 'IN_PROGRESS')).toBe(true);
   await ctx.dispose();
@@ -571,6 +578,8 @@ test('ADMIN 可以获取智能助手建议，PARTNER 无权访问', async ({ bas
   const adminBody = await adminRes.json();
   expect(Array.isArray(adminBody?.data?.suggestions)).toBe(true);
   expect(adminBody?.data?.suggestions?.length).toBeGreaterThan(0);
+  expect(typeof adminBody?.data?.suggestions?.[0]?.title).toBe('string');
+  expect(typeof adminBody?.data?.suggestions?.[0]?.description).toBe('string');
   await adminCtx.dispose();
 
   const partnerCtx = await request.newContext({ baseURL });
