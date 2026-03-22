@@ -48,11 +48,9 @@ interface Customer {
     email: string;
   } | null;
   jobTitle: string | null;
-  idCard: string;
   createdAt: Date | string;
   idCardType?: string;
   decryptedIdCardNumber?: string;
-  idCardNumberEncrypted?: string;
 }
 
 interface CustomerAddDialogProps {
