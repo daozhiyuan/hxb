@@ -61,12 +61,12 @@ export async function POST(request: Request) {
     const validatedData = validationResult.data;
     console.log('验证后的客户数据:', validatedData);
 
-    // 加密身份证号
-    const encryptedIdCard = encryptIdCard(validatedData.idCardNumber);
-    const hashedIdCard = hashIdCard(validatedData.idCardNumber);
+    // 加密证件号码
+    const encryptedIdNumber = encryptIdCard(validatedData.idCardNumber);
+    const idNumberHash = hashIdCard(validatedData.idCardNumber);
 
-    // 检查身份证号是否已存在
-    const { success: checkSuccess, isDuplicate } = await safeCheckDuplicateCustomer(hashedIdCard);
+    // 检查证件号码是否已存在
+    const { success: checkSuccess, isDuplicate } = await safeCheckDuplicateCustomer(idNumberHash);
     
     if (!checkSuccess) {
       return NextResponse.json(
@@ -85,8 +85,8 @@ export async function POST(request: Request) {
     // 创建客户记录，使用safeCreateCustomer替代直接调用Prisma
     const { success, customer, error } = await safeCreateCustomer({
       name: validatedData.name,
-      idNumber: encryptedIdCard,
-      idNumberHash: hashedIdCard,
+      idNumber: encryptedIdNumber,
+      idNumberHash: idNumberHash,
       notes: validatedData.notes,
       phone: validatedData.phone,
       email: validatedData.email,
