@@ -399,8 +399,11 @@ test('PARTNER 可访问申诉列表与自有申诉详情，但不能访问管理
   const appealsBody = await appealsRes.json();
   expect(Array.isArray(appealsBody?.items)).toBe(true);
   expect(appealsBody?.items?.length).toBeGreaterThan(0);
+  expect(typeof appealsBody.items[0]?.id).toBe('number');
+  expect(typeof appealsBody.items[0]?.customerName).toBe('string');
   expect(appealsBody.items[0]?.idNumber).toBeUndefined();
   expect(appealsBody.items[0]?.idNumberHash).toBeUndefined();
+  expect(typeof appealsBody.items[0]?.partner?.id).toBe('number');
   expect(appealsBody.items[0]?.partner?.passwordHash).toBeUndefined();
   expect(appealsBody.items[0]?.operator?.passwordHash).toBeUndefined();
 
@@ -409,8 +412,10 @@ test('PARTNER 可访问申诉列表与自有申诉详情，但不能访问管理
   const appealBody = await appealDetailRes.json();
   expect(appealBody?.success).toBe(true);
   expect(appealBody?.data?.id).toBe(1);
+  expect(typeof appealBody?.data?.customerName).toBe('string');
   expect(appealBody?.data?.idNumber).toBeUndefined();
   expect(appealBody?.data?.idNumberHash).toBeUndefined();
+  expect(typeof appealBody?.data?.partner?.id).toBe('number');
   expect(appealBody?.data?.partner?.passwordHash).toBeUndefined();
   expect(appealBody?.data?.operator?.passwordHash).toBeUndefined();
 
