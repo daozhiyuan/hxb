@@ -171,9 +171,11 @@ test('ADMIN 可以访问系统概览 API（应 200）', async ({ baseURL }) => {
   expect(overviewRes.status()).toBe(200);
   const body = await overviewRes.json();
   expect(body?.runtime?.status).toBe('OK');
+  expect(typeof body?.runtime).toBe('object');
   expect(typeof body?.runtime?.timestamp).toBe('string');
   expect(typeof body?.runtime?.nodeEnv).toBe('string');
   expect(typeof body?.runtime?.uptimeSeconds).toBe('number');
+  expect(typeof body?.counts).toBe('object');
   expect(typeof body?.counts?.users).toBe('number');
   expect(typeof body?.counts?.customers).toBe('number');
   expect(typeof body?.counts?.appeals).toBe('number');
@@ -193,6 +195,13 @@ test('ADMIN 可以访问质量概览 API（应 200）', async ({ baseURL }) => {
   expect(typeof body?.generatedAt).toBe('string');
   expect(typeof body?.siteAuditCount).toBe('number');
   expect(Array.isArray(body?.suggestedCommands)).toBe(true);
+  expect(typeof body?.suggestedCommands?.[0]).toBe('string');
+  if (body?.latestSiteAudit) {
+    expect(typeof body.latestSiteAudit?.name).toBe('string');
+    expect(typeof body.latestSiteAudit?.path).toBe('string');
+    expect(typeof body.latestSiteAudit?.updatedAt).toBe('string');
+    expect(typeof body.latestSiteAudit?.sizeBytes).toBe('number');
+  }
   await ctx.dispose();
 });
 
@@ -251,9 +260,11 @@ test('SUPER_ADMIN 也可以访问系统概览 API（应 200）', async ({ baseUR
   expect(overviewRes.status()).toBe(200);
   const body = await overviewRes.json();
   expect(body?.runtime?.status).toBe('OK');
+  expect(typeof body?.runtime).toBe('object');
   expect(typeof body?.runtime?.timestamp).toBe('string');
   expect(typeof body?.runtime?.nodeEnv).toBe('string');
   expect(typeof body?.runtime?.uptimeSeconds).toBe('number');
+  expect(typeof body?.counts).toBe('object');
   expect(typeof body?.counts?.users).toBe('number');
   expect(typeof body?.counts?.customers).toBe('number');
   expect(typeof body?.counts?.appeals).toBe('number');
@@ -273,6 +284,13 @@ test('SUPER_ADMIN 也可以访问质量概览 API（应 200）', async ({ baseUR
   expect(typeof body?.generatedAt).toBe('string');
   expect(typeof body?.siteAuditCount).toBe('number');
   expect(Array.isArray(body?.suggestedCommands)).toBe(true);
+  expect(typeof body?.suggestedCommands?.[0]).toBe('string');
+  if (body?.latestSiteAudit) {
+    expect(typeof body.latestSiteAudit?.name).toBe('string');
+    expect(typeof body.latestSiteAudit?.path).toBe('string');
+    expect(typeof body.latestSiteAudit?.updatedAt).toBe('string');
+    expect(typeof body.latestSiteAudit?.sizeBytes).toBe('number');
+  }
   await ctx.dispose();
 });
 
