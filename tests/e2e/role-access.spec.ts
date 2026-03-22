@@ -138,6 +138,8 @@ test('ADMIN 不能访问 /api/admin/settings（应 403）', async ({ baseURL }) 
 
   const settingsRes = await ctx.get('/api/admin/settings');
   expect(settingsRes.status()).toBe(403);
+  const settingsBody = await settingsRes.json();
+  expect(typeof settingsBody?.message).toBe('string');
   await ctx.dispose();
 });
 
@@ -148,6 +150,15 @@ test('SUPER_ADMIN 可以访问 /api/admin/settings（应 200）', async ({ baseU
 
   const settingsRes = await ctx.get('/api/admin/settings');
   expect(settingsRes.status()).toBe(200);
+  const body = await settingsRes.json();
+  expect(typeof body?.systemName).toBe('string');
+  expect(typeof body?.logoUrl).toBe('string');
+  expect(typeof body?.primaryColor).toBe('string');
+  expect(typeof body?.enableNotifications).toBe('boolean');
+  expect(typeof body?.defaultLanguage).toBe('string');
+  expect(typeof body?.dataRetentionDays).toBe('number');
+  expect(typeof body?.maintenanceMode).toBe('boolean');
+  expect(typeof body?.debugMode).toBe('boolean');
   await ctx.dispose();
 });
 
