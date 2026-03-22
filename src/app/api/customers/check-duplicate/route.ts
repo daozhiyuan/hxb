@@ -36,11 +36,11 @@ export async function GET(request: Request) {
     }
 
     // 使用统一的hashIdCard函数进行哈希
-    const idCardHash = hashIdCard(idNumber, idCardType);
-    console.log(`[check-duplicate] 生成哈希值完成, 前几位: ${idCardHash.substring(0, 8)}...`);
+    const idNumberHash = hashIdCard(idNumber, idCardType);
+    console.log(`[check-duplicate] 生成哈希值完成, 前几位: ${idNumberHash.substring(0, 8)}...`);
 
     // 安全查询是否重复
-    const result = await safeCheckDuplicateCustomer(idCardHash);
+    const result = await safeCheckDuplicateCustomer(idNumberHash);
     console.log(`[check-duplicate] 查重结果: 成功=${result.success}, 是否重复=${result.isDuplicate}`);
 
     if (!result.success) {

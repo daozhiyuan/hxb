@@ -448,11 +448,11 @@ export async function safeCreateFollowUp(data: {
 }
 
 // 安全地根据身份证哈希查找客户
-export async function safeFindCustomerByIdCardHash(idCardHash: string) {
+export async function safeFindCustomerByIdCardHash(idNumberHash: string) {
   try {
     // 使用Prisma模型查询
     const customer = await prisma.customer.findFirst({
-      where: { idNumberHash: idCardHash }
+      where: { idNumberHash }
     });
     
     return { 
@@ -470,7 +470,7 @@ export async function safeFindCustomerByIdCardHash(idCardHash: string) {
       const result = await prisma.$queryRaw<{id: number, partnerId: number}[]>`
         SELECT id, partnerId 
         FROM customers 
-        WHERE idNumberHash = ${idCardHash} 
+        WHERE idNumberHash = ${idNumberHash} 
         LIMIT 1;
       `;
       
@@ -489,11 +489,11 @@ export async function safeFindCustomerByIdCardHash(idCardHash: string) {
 }
 
 // 安全地检查客户是否重复
-export async function safeCheckDuplicateCustomer(idCardHash: string) {
+export async function safeCheckDuplicateCustomer(idNumberHash: string) {
   try {
     // 使用Prisma模型查询
     const count = await prisma.customer.count({
-      where: { idNumberHash: idCardHash }
+      where: { idNumberHash }
     });
     
     return { success: true, isDuplicate: count > 0 };
@@ -505,7 +505,7 @@ export async function safeCheckDuplicateCustomer(idCardHash: string) {
       const result = await prisma.$queryRaw<{count: number}[]>`
         SELECT COUNT(*) as count 
         FROM customers 
-        WHERE idNumberHash = ${idCardHash};
+        WHERE idNumberHash = ${idNumberHash};
       `;
       
       // 获取计数结果
