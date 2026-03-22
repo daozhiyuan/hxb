@@ -42,11 +42,11 @@ interface Customer {
   notes: string | null;
   registrationDate: Date | string;
   updatedAt: Date | string;
-  registeredBy?: {
+  partner?: {
     id: number;
     name: string | null;
     email: string;
-  };
+  } | null;
   jobTitle: string | null;
   idCard: string;
   createdAt: Date | string;

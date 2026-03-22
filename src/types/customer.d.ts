@@ -32,10 +32,10 @@ export interface CustomerDetail {
   updatedAt: Date;
   jobTitle: string | null;
   address: string | null;
-  idCardHash: string | null;
-  idCardNumberEncrypted: string | null;
+  idNumberHash: string | null;
+  idNumber: string | null;
   lastYearRevenue: number | null;
-  registeredByPartnerId: number;
+  partnerId: number | null;
   followUpStatus?: string | null;
   industry?: string | null;
   source?: string | null;
@@ -45,12 +45,12 @@ export interface CustomerDetail {
   // 关联数据
   tags: CustomerTag[];
   followUps: CustomerFollowUp[];
-  registeredBy: {
+  partner: {
     id: number;
     name: string | null;
     email: string;
-  };
+  } | null;
 
   // 动态添加的解密字段
   decryptedIdCardNumber?: string;
-} 
+}
