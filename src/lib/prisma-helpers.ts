@@ -459,7 +459,7 @@ export async function safeFindCustomerByIdCardHash(idCardHash: string) {
       success: true, 
       customer: customer ? { 
         id: customer.id, 
-        registeredByPartnerId: customer.partnerId 
+        partnerId: customer.partnerId 
       } : null 
     };
   } catch (error) {
@@ -476,7 +476,7 @@ export async function safeFindCustomerByIdCardHash(idCardHash: string) {
       
       // 如果找到结果，返回第一条记录
       if (result && result.length > 0) {
-        return { success: true, customer: { id: result[0].id, registeredByPartnerId: result[0].partnerId } };
+        return { success: true, customer: { id: result[0].id, partnerId: result[0].partnerId } };
       }
       
       // 未找到记录
@@ -570,7 +570,7 @@ export async function safeCreateCustomer(data: {
       customer: { 
         id: customer.id,
         name: customer.name,
-        registeredByPartnerId: customer.partnerId
+        partnerId: customer.partnerId
       } 
     };
   } catch (error) {

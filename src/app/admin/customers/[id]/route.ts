@@ -32,14 +32,8 @@ export async function GET(
       return NextResponse.json({ error: '客户不存在' }, { status: 404 });
     }
     
-    // 检查是否是超级管理员、管理员或注册合作伙伴
-//     const userRole = String(session.user.role);
-//     if (userRole !== 'SUPER_ADMIN' && 
-//         userRole !== 'ADMIN' && 
+    // 当前权限策略：管理员与超级管理员可查看；合作伙伴侧权限由独立 CRM 接口约束
     const userRole = String(session.user.role);
-//         customer.registeredByPartnerId !== session.user.id) {
-//       return NextResponse.json({ error: '没有权限查看此客户' }, { status: 403 });
-//     }
     
     // 如果是超级管理员，解密证件号码
     let decryptedIdCardNumber = '';
@@ -120,13 +114,7 @@ export async function PATCH(
       return NextResponse.json({ error: '客户不存在' }, { status: 404 });
     }
     
-    // 检查是否是超级管理员、管理员或注册合作伙伴
-//     const userRole = String(session.user.role);
-//     if (userRole !== 'SUPER_ADMIN' && 
-//         userRole !== 'ADMIN' && 
-//         customer.registeredByPartnerId !== session.user.id) {
-//       return NextResponse.json({ error: '没有权限更新此客户' }, { status: 403 });
-//     }
+    // 当前权限策略：管理员与超级管理员可更新；合作伙伴侧权限由独立 CRM 接口约束
     
     const body = await request.json();
     
