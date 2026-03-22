@@ -328,6 +328,7 @@ test('ADMIN 与 SUPER_ADMIN 查看申诉详情时字段可见性不同', async (
   expect(adminBody?.success).toBe(true);
   expect(adminBody?.data?.id).toBe(1);
   expect(typeof adminBody?.data?.customerName).toBe('string');
+  expect(typeof adminBody?.data?.status).toBe('string');
   expect(adminBody?.data?.idNumber).toBeUndefined();
   expect(adminBody?.data?.idNumberHash).toBeUndefined();
   expect(typeof adminBody?.data?.partner?.id).toBe('number');
@@ -340,9 +341,12 @@ test('ADMIN 与 SUPER_ADMIN 查看申诉详情时字段可见性不同', async (
   const adminListBody = await adminAppealsRes.json();
   expect(Array.isArray(adminListBody?.items)).toBe(true);
   expect(adminListBody?.pagination?.page).toBe(1);
+  expect(typeof adminListBody?.pagination?.pageSize).toBe('number');
+  expect(typeof adminListBody?.pagination?.total).toBe('number');
   expect(adminListBody?.items?.length).toBeGreaterThan(0);
   expect(typeof adminListBody.items[0]?.id).toBe('number');
   expect(typeof adminListBody.items[0]?.customerName).toBe('string');
+  expect(typeof adminListBody.items[0]?.status).toBe('string');
   expect(adminListBody.items[0]?.idNumber).toBeUndefined();
   expect(adminListBody.items[0]?.idNumberHash).toBeUndefined();
   expect(typeof adminListBody.items[0]?.partner?.id).toBe('number');
@@ -361,6 +365,7 @@ test('ADMIN 与 SUPER_ADMIN 查看申诉详情时字段可见性不同', async (
   expect(superBody?.success).toBe(true);
   expect(superBody?.data?.id).toBe(1);
   expect(typeof superBody?.data?.customerName).toBe('string');
+  expect(typeof superBody?.data?.status).toBe('string');
   expect(typeof superBody?.data?.idNumber).toBe('string');
   expect(superBody?.data?.idNumber.length).toBeGreaterThan(0);
   expect(typeof superBody?.data?.idNumberHash).toBe('string');
@@ -375,9 +380,12 @@ test('ADMIN 与 SUPER_ADMIN 查看申诉详情时字段可见性不同', async (
   const superListBody = await superAppealsRes.json();
   expect(Array.isArray(superListBody?.items)).toBe(true);
   expect(superListBody?.pagination?.page).toBe(1);
+  expect(typeof superListBody?.pagination?.pageSize).toBe('number');
+  expect(typeof superListBody?.pagination?.total).toBe('number');
   expect(superListBody?.items?.length).toBeGreaterThan(0);
   expect(typeof superListBody.items[0]?.id).toBe('number');
   expect(typeof superListBody.items[0]?.customerName).toBe('string');
+  expect(typeof superListBody.items[0]?.status).toBe('string');
   expect(typeof superListBody.items[0]?.idNumber).toBe('string');
   expect(superListBody.items[0]?.idNumber.length).toBeGreaterThan(0);
   expect(typeof superListBody.items[0]?.idNumberHash).toBe('string');
@@ -398,9 +406,13 @@ test('PARTNER 可访问申诉列表与自有申诉详情，但不能访问管理
   expect(appealsRes.status()).toBe(200);
   const appealsBody = await appealsRes.json();
   expect(Array.isArray(appealsBody?.items)).toBe(true);
+  expect(appealsBody?.pagination?.page).toBe(1);
+  expect(typeof appealsBody?.pagination?.pageSize).toBe('number');
+  expect(typeof appealsBody?.pagination?.total).toBe('number');
   expect(appealsBody?.items?.length).toBeGreaterThan(0);
   expect(typeof appealsBody.items[0]?.id).toBe('number');
   expect(typeof appealsBody.items[0]?.customerName).toBe('string');
+  expect(typeof appealsBody.items[0]?.status).toBe('string');
   expect(appealsBody.items[0]?.idNumber).toBeUndefined();
   expect(appealsBody.items[0]?.idNumberHash).toBeUndefined();
   expect(typeof appealsBody.items[0]?.partner?.id).toBe('number');
@@ -413,6 +425,7 @@ test('PARTNER 可访问申诉列表与自有申诉详情，但不能访问管理
   expect(appealBody?.success).toBe(true);
   expect(appealBody?.data?.id).toBe(1);
   expect(typeof appealBody?.data?.customerName).toBe('string');
+  expect(typeof appealBody?.data?.status).toBe('string');
   expect(appealBody?.data?.idNumber).toBeUndefined();
   expect(appealBody?.data?.idNumberHash).toBeUndefined();
   expect(typeof appealBody?.data?.partner?.id).toBe('number');
