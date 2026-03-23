@@ -579,6 +579,9 @@ test('ADMIN 可以创建项目、创建任务并更新状态', async ({ baseURL 
   expect(typeof projectId).toBe('number');
   expect(projectBody?.data?.name).toBe(projectName);
   expect(projectBody?.data?.priority).toBe('MEDIUM');
+  expect(typeof projectBody?.data?.owner?.id).toBe('number');
+  expect(typeof projectBody?.data?.owner?.email).toBe('string');
+  expect(Array.isArray(projectBody?.data?.tasks)).toBe(true);
 
   const createTaskRes = await ctx.post(`/api/admin/projects/${projectId}/tasks`, {
     data: { title: '补齐最小任务流', priority: 'HIGH' },
@@ -589,6 +592,8 @@ test('ADMIN 可以创建项目、创建任务并更新状态', async ({ baseURL 
   expect(typeof taskId).toBe('number');
   expect(taskBody?.data?.title).toBe('补齐最小任务流');
   expect(taskBody?.data?.priority).toBe('HIGH');
+  expect(typeof taskBody?.data?.creator?.id).toBe('number');
+  expect(typeof taskBody?.data?.creator?.email).toBe('string');
 
   const patchTaskRes = await ctx.patch(`/api/admin/tasks/${taskId}`, {
     data: { status: 'IN_PROGRESS' },
@@ -597,6 +602,8 @@ test('ADMIN 可以创建项目、创建任务并更新状态', async ({ baseURL 
   const patchedTaskBody = await patchTaskRes.json();
   expect(typeof patchedTaskBody?.data?.id).toBe('number');
   expect(patchedTaskBody?.data?.status).toBe('IN_PROGRESS');
+  expect(typeof patchedTaskBody?.data?.creator?.id).toBe('number');
+  expect(typeof patchedTaskBody?.data?.creator?.email).toBe('string');
 
   const listProjectsRes = await ctx.get('/api/admin/projects');
   expect(listProjectsRes.status()).toBe(200);
@@ -605,7 +612,17 @@ test('ADMIN 可以创建项目、创建任务并更新状态', async ({ baseURL 
   const created = listProjectsBody?.data?.find((item: any) => item.id === projectId);
   expect(created?.name).toBe(projectName);
   expect(created?.priority).toBe('MEDIUM');
+  expect(typeof created?.owner?.id).toBe('number');
+  expect(typeof created?.owner?.email).toBe('string');
   expect(Array.isArray(created?.tasks)).toBe(true);
+  if (Array.isArray(created?.tasks) && created.tasks.length > 0) {
+    expect(typeof created.tasks[0]?.creator?.id).toBe('number');
+    expect(typeof created.tasks[0]?.creator?.email).toBe('string');
+    if (created.tasks[0]?.assignee) {
+      expect(typeof created.tasks[0]?.assignee?.id).toBe('number');
+      expect(typeof created.tasks[0]?.assignee?.email).toBe('string');
+    }
+  }
   expect(created?.tasks?.some((task: any) => task.id === taskId && task.status === 'IN_PROGRESS')).toBe(true);
   await ctx.dispose();
 });
