@@ -636,6 +636,8 @@ test('ADMIN 可以获取智能助手建议，PARTNER 无权访问', async ({ bas
   const adminBody = await adminRes.json();
   expect(Array.isArray(adminBody?.data?.suggestions)).toBe(true);
   expect(adminBody?.data?.suggestions?.length).toBeGreaterThan(0);
+  expect(typeof adminBody?.data?.suggestions?.[0]?.id).toBe('string');
+  expect(typeof adminBody?.data?.suggestions?.[0]?.level).toBe('string');
   expect(typeof adminBody?.data?.suggestions?.[0]?.title).toBe('string');
   expect(typeof adminBody?.data?.suggestions?.[0]?.description).toBe('string');
   await adminCtx.dispose();
