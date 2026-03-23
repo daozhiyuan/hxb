@@ -183,6 +183,7 @@ test('ADMIN 可以访问系统概览 API（应 200）', async ({ baseURL }) => {
   expect(typeof body?.counts?.customers).toBe('number');
   expect(typeof body?.counts?.appeals).toBe('number');
   expect(typeof body?.counts?.pendingAppeals).toBe('number');
+  expect(body?.counts?.pendingAppeals).toBeLessThanOrEqual(body?.counts?.appeals);
   await ctx.dispose();
 });
 
