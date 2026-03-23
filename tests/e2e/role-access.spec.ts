@@ -159,6 +159,9 @@ test('SUPER_ADMIN 可以访问 /api/admin/settings（应 200）', async ({ baseU
   expect(typeof body?.dataRetentionDays).toBe('number');
   expect(typeof body?.maintenanceMode).toBe('boolean');
   expect(typeof body?.debugMode).toBe('boolean');
+  expect(typeof body?.copyright).toBe('string');
+  expect(typeof body?.companyName).toBe('string');
+  expect(typeof body?.icp).toBe('string');
   await ctx.dispose();
 });
 
