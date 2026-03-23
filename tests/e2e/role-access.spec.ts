@@ -199,6 +199,10 @@ test('ADMIN 可以访问质量概览 API（应 200）', async ({ baseURL }) => {
   expect(typeof body?.siteAuditCount).toBe('number');
   expect(Array.isArray(body?.suggestedCommands)).toBe(true);
   expect(typeof body?.suggestedCommands?.[0]).toBe('string');
+  expect(body?.suggestedCommands).toContain('npm run typecheck');
+  expect(body?.suggestedCommands).toContain('npm run e2e:auth:public');
+  expect(body?.suggestedCommands).toContain('npm run audit:site');
+  expect(body?.suggestedCommands).toContain('npm run verify:public');
   if (body?.latestSiteAudit) {
     expect(typeof body.latestSiteAudit?.name).toBe('string');
     expect(typeof body.latestSiteAudit?.path).toBe('string');
@@ -294,6 +298,10 @@ test('SUPER_ADMIN 也可以访问质量概览 API（应 200）', async ({ baseUR
   expect(typeof body?.siteAuditCount).toBe('number');
   expect(Array.isArray(body?.suggestedCommands)).toBe(true);
   expect(typeof body?.suggestedCommands?.[0]).toBe('string');
+  expect(body?.suggestedCommands).toContain('npm run typecheck');
+  expect(body?.suggestedCommands).toContain('npm run e2e:auth:public');
+  expect(body?.suggestedCommands).toContain('npm run audit:site');
+  expect(body?.suggestedCommands).toContain('npm run verify:public');
   if (body?.latestSiteAudit) {
     expect(typeof body.latestSiteAudit?.name).toBe('string');
     expect(typeof body.latestSiteAudit?.path).toBe('string');
@@ -643,6 +651,13 @@ test('ADMIN 可以获取智能助手建议，PARTNER 无权访问', async ({ bas
   expect(typeof adminBody?.data?.suggestions?.[0]?.level).toBe('string');
   expect(typeof adminBody?.data?.suggestions?.[0]?.title).toBe('string');
   expect(typeof adminBody?.data?.suggestions?.[0]?.description).toBe('string');
+  const projectOverviewSuggestion = adminBody?.data?.suggestions?.find((item: any) => item?.id === 'projects-active');
+  expect(projectOverviewSuggestion).toBeTruthy();
+  expect(projectOverviewSuggestion?.level).toBe('info');
+  expect(typeof projectOverviewSuggestion?.title).toBe('string');
+  expect(projectOverviewSuggestion?.title?.length).toBeGreaterThan(0);
+  expect(typeof projectOverviewSuggestion?.description).toBe('string');
+  expect(projectOverviewSuggestion?.description).toContain('活跃项目');
   await adminCtx.dispose();
 
   const partnerCtx = await request.newContext({ baseURL });
