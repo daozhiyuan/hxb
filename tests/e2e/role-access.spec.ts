@@ -311,6 +311,8 @@ test('SUPER_ADMIN 也可以访问质量概览 API（应 200）', async ({ baseUR
     expect(typeof body.latestSiteAudit?.path).toBe('string');
     expect(typeof body.latestSiteAudit?.updatedAt).toBe('string');
     expect(typeof body.latestSiteAudit?.sizeBytes).toBe('number');
+    expect(body.latestSiteAudit?.name).toContain('site-audit-');
+    expect(body.latestSiteAudit?.path).toContain('/reports/site-audit-');
   }
   await ctx.dispose();
 });
